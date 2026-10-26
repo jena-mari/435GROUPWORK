@@ -1,0 +1,13 @@
+{
+  "background": {
+    "field": 0,
+    "white": 1
+  },
+  "disease": {
+    "brown_spot": 0,
+    "leaf_scald": 1,
+    "rice_blast": 2,
+    "rice_tungro": 3,
+    "sheath_blight": 4
+  }
+}

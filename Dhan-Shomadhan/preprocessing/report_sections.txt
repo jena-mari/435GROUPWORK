@@ -1,0 +1,44 @@
+III. Problem Description
+
+The client requires a system that predicts which of five rice diseases is present in a supplied photograph: Brown Spot, Leaf Scald, Rice Blast, Rice Tungro or Sheath Blight. This is a five-class, single-label image-classification problem. The input is an RGB image captured in a field or against a white background; the output is one disease label. The task assumes that one of these five diseases is present. Healthy-leaf recognition, localisation of lesions and diagnosis of diseases outside this label set are outside this experiment's scope.
+
+The Dhan-Shomadhan dataset [1] contains 1,106 images in the inspected copy: 337 field images and 769 white-background images. Disease totals range from 139 Brown Spot images to 283 Sheath Blight images. Figure 1 illustrates both acquisition settings for all five classes. In the inspected examples, field images include overlapping leaves, soil, water and vegetation, making the relevant leaf less visually isolated. White-background images isolate the leaf more clearly, but contain illumination gradients, shadows and variations in leaf placement. Leaves also vary in orientation, apparent scale and visible damage. Small lesion details may be lost during resizing, while cropping can remove symptoms near the leaf tip or edge. Similar colours and lesion appearances across class folders, together with variation within each class, make global colour alone an insufficient basis for reliable discrimination.
+
+These observations motivate comparing a handcrafted baseline with pretrained ResNet-18 features and partial fine-tuning, which test whether transferable visual representations help distinguish the available classes. Background is retained as evaluation metadata. Performance must be examined separately for field, white-background and combined test images because the combined set is dominated by white-background images. Class imbalance also motivates reporting macro-F1 alongside per-class results. Repeated views of the same leaf can inflate evaluation scores if they cross partitions; related and unresolved similarity-candidate images are therefore grouped before creating five shared holdout splits. Folder labels are treated as supplied annotations, not independently verified diagnoses.
+
+IV.1. Shared Dataset Preparation (implemented)
+
+Images were enumerated in a fixed sorted order, preserving the dataset's original paths. Explicit aliases standardised folder spelling variants and trailing whitespace to a fixed five-class mapping. The supplied metadata CSV was checked against folder labels and filenames; 0 inconsistencies were found. All 1,106 images passed image-stream verification and full decoding. The decoded image sizes were 1952 x 4160 (1089 images), 4160 x 1952 (11) and 1536 x 3264 (6). RGB conversion and EXIF orientation handling occur in the shared loader. No original images were altered or deleted.
+
+Full-file SHA-256 hashing identified 0 byte-identical duplicate groups. Candidate related images were screened using horizontal 64-bit difference hashing and 64-bit perceptual hashing. A pair was flagged when its dHash Hamming distance was at most 6 or its pHash distance was at most 8. These fixed screening thresholds produced 1,394 candidate pairs. They are exploratory screening rules, not calibrated proof that two images show the same leaf. Inspection of a sample of the strongest candidate pairs and selected class contact sheets showed both repeated views and similar silhouettes on white backgrounds. Four pairs were recorded as visually supported related views; 1,390 remaining candidates were kept together conservatively, without claiming full pairwise visual review.
+
+All retained candidate edges were joined transitively to form 613 disjoint groups. This policy prioritises preventing leakage through unresolved candidate pairs: allowing a repeated view to enter both training and testing could inflate performance for every method, whereas conservatively joining an unrelated pair reduces allocation flexibility while retaining both images. This is therefore preferable to treating unresolved candidates as independent for the current comparison. It is not established as universally optimal; false candidates and missed relationships remain possible. No images were excluded solely because of perceptual similarity.
+
+The largest connected group contains 461 white-background images (41.7% of the dataset) and is allocated to training in all five runs. Consequently, these images are never directly tested, the effective number of independent units is smaller than the image count, and the test sets have restricted coverage. This is a material limitation of the conservative policy. Grouping every candidate is not equivalent to confirming that all 461 images depict the same leaf. No plant or acquisition-session identifiers were available to establish complete biological independence.
+
+Five repeated random holdouts used seeds 11, 22, 33, 44 and 55, targeting 70% training, 15% validation and 15% testing. A seeded allocation heuristic retained the best of 200 greedy starts, minimising squared deviations from the ten disease/background stratum targets, weighted by each target count. Groups were indivisible. Every saved partition contains all five diseases under both backgrounds; every eligible image occurs exactly once per run, and no group or exact file hash crosses partitions within a run. Achieved counts, rather than exact target percentages, are reported in Table 2. These runs are not five-fold cross-validation, and their test samples can overlap between runs.
+
+All three methods must use these same manifests. Model-specific resizing and transformations occur after splitting; random augmentation is restricted to training images. Scalers, PCA, feature selection and other fitted preprocessing must be estimated only on the corresponding training partition. The loader returns the image, disease ID, background ID and image ID. Background is not supplied as a classifier feature. No background removal, lesion segmentation, denoising or colour thresholding was applied as a shared preprocessing step. Their benefit would require a separate experiment.
+
+Algorithm 1. Auditing and conservative generation of five shared holdouts
+
+Input: dataset root; seeds {11,22,33,44,55}; target ratios {0.70,0.15,0.15}.
+1. Enumerate source images in sorted order; map explicit folder aliases to fixed IDs.
+2. Verify and decode each image. Record source path/labels, dimensions, SHA-256,
+   dHash64, pHash64 and descriptive quality proxies. Check supplied metadata.
+3. Flag unreadable/unknown labels and conflicting exact-copy annotations.
+   Resolve conflicts explicitly. Retain one copy per unambiguous exact-copy set.
+4. Flag candidate pairs if dHash distance <=6 OR pHash distance <=8.
+5. Record any visual pair decisions and additional manual grouping information.
+6. Under the selected conservative policy, retain both images of every unresolved
+   candidate pair and join their groups. Relatedness is not assumed to be proven.
+   Compute connected components, including transitive links and manual groups.
+7. For each seed, allocate whole groups to training, validation and testing using
+   200 seeded greedy starts and retain the valid allocation nearest stratum targets.
+8. Verify exact coverage, group/hash separation and all ten strata per partition.
+9. Save three manifests, achieved counts, fixed mappings, review decisions and
+   provenance for each run under the main dataset directory.
+10. Load the same saved manifests for all three methods. Fit any data-derived
+    preprocessing on training images only; augment training images only.
+
+[1] M. F. Hossain, S. Abujar, S. R. H. Noori, and S. A. Hossain, "Dhan-Shomadhan: A Dataset of Rice Leaf Disease Classification for Bangladeshi Local Rice," Mendeley Data, V1, 2021, doi: 10.17632/znsxdctwtt.1.

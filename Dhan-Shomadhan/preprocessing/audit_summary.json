@@ -1,0 +1,49 @@
+{
+  "background_aliases": {
+    "field background": "field",
+    "white background": "white"
+  },
+  "background_mapping": {
+    "field": 0,
+    "white": 1
+  },
+  "candidate_rule": "dHash64 Hamming <= 6 OR pHash64 Hamming <= 8; original orientation",
+  "candidate_warning": "Fixed screening thresholds, not calibrated same-leaf detection. Review all candidates; misses remain possible.",
+  "class_mapping": {
+    "brown_spot": 0,
+    "leaf_scald": 1,
+    "rice_blast": 2,
+    "rice_tungro": 3,
+    "sheath_blight": 4
+  },
+  "dimensions": {
+    "1536x3264": 6,
+    "1952x4160": 1089,
+    "4160x1952": 11
+  },
+  "disease_aliases": {
+    "brown spot": "brown_spot",
+    "browon spot": "brown_spot",
+    "leaf scald": "leaf_scald",
+    "leaf scaled": "leaf_scald",
+    "rice blast": "rice_blast",
+    "rice tungro": "rice_tungro",
+    "rice turgro": "rice_tungro",
+    "shath blight": "sheath_blight",
+    "sheath blight": "sheath_blight"
+  },
+  "exact_duplicate_groups": 0,
+  "exact_extra_copies": 0,
+  "images": 1106,
+  "inventory_sha256": "e13b53cb57f295010f5696e275d90a06b9b307920cd26d86d2fbf889631ec91b",
+  "metadata_issues": 0,
+  "near_duplicate_candidates": 1394,
+  "numpy": "2.3.5",
+  "pillow": "12.3.0",
+  "python": "3.12.14",
+  "readable": 1106,
+  "source_location_note": "Machine-specific source path omitted for repository portability; image paths and inventory hash are unchanged.",
+  "source_root": "Dhan-Shomadhan",
+  "unknown_label_paths": [],
+  "unreadable": 0
+}

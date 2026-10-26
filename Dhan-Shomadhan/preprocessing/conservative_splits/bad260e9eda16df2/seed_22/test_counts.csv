@@ -1,0 +1,11 @@
+disease,background,count
+brown_spot,field,7
+brown_spot,white,13
+leaf_scald,field,11
+leaf_scald,white,21
+rice_blast,field,11
+rice_blast,white,30
+rice_tungro,field,11
+rice_tungro,white,17
+sheath_blight,field,10
+sheath_blight,white,33

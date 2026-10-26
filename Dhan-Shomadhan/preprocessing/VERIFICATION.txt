@@ -1,0 +1,11 @@
+Verification completed 26 October 2026 (Australia/Sydney).
+8 unittest cases passed.
+15 saved manifests checked against recorded SHA-256 checksums.
+All 1106 eligible images occur exactly once per seed.
+All 10 disease/background strata occur in every partition.
+No image, group, or exact SHA-256 hash crosses partitions within a seed.
+Five distinct test image sets verified.
+30 real-image RGB loader reads passed (first and last sample in each manifest).
+Every source image SHA-256 was rechecked against the audit before split generation.
+PyTorch DataLoader integration and model training were not executed.
+Conservative grouping selected by user; 4 related pairs visually recorded; 1390 unresolved candidates grouped without claiming exhaustive visual review.

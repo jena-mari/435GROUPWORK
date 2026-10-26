@@ -1,0 +1,48 @@
+{
+  "algorithm": "200 seeded greedy starts; squared stratum errors / target",
+  "eligible_images": 1106,
+  "fingerprint": "bad260e9eda16df28e0f6b1299ba5f5bfcaa0cb4b93ae6b5d8355d88f8795d05",
+  "gallery_reviewed": false,
+  "inventory_sha256": "e13b53cb57f295010f5696e275d90a06b9b307920cd26d86d2fbf889631ec91b",
+  "limitation": "No plant/session IDs supplied. Visual review cannot establish complete biological independence.",
+  "manifest_sha256": {
+    "seed_11/test.csv": "a296c3237766d5cb5fd023087c30594efd967bddca3967609dc8d80aff144f8e",
+    "seed_11/train.csv": "41b1d6ea540e98e59e52b3fec72917f8d986cab4e2ab6a49a3bb92e6e968877e",
+    "seed_11/validation.csv": "5bb1f81c873532e4c49d8adcf992d8c45a2516c2bcfc5019e0662c1d68f9b273",
+    "seed_22/test.csv": "d270f6aad3da5b63703925534d8f1c91292ff72f219e7d7dcb75af826b47e9bb",
+    "seed_22/train.csv": "21438624666de1eabd4107067e2145dc4438306cca77859a5e19b958ef55b1d1",
+    "seed_22/validation.csv": "925500a4710cb82a91c93c4a91f28cdc4b773bb04cd13b2cb4cfd3638c4590ca",
+    "seed_33/test.csv": "d6bc94a4c7c9454919bad8b78af8964c09a4aff229e8322a4d1d2e3e2df41ac8",
+    "seed_33/train.csv": "03e74e65191a81cb34f00c315b447a500955a78df498251137b82d7af6775662",
+    "seed_33/validation.csv": "eba5cd8bea4676f23179160f7b349eee5ed267bf90d0ae5aeb590c1aff163c53",
+    "seed_44/test.csv": "59931da59b9f2a2a67121450d7130d6d55f649d211b1a8486995b04fa03a2af3",
+    "seed_44/train.csv": "4013ac247f56af6df488f25627ed70bfa52b18d13dfdb4237e11659665bcce71",
+    "seed_44/validation.csv": "ecdaed0899a76ac051b587b613ce790207e9b7c4769881acc5f9d48a83a9f58b",
+    "seed_55/test.csv": "1f15534cbf560e3183fa9231fc87827809d9d0fef86d9b420f967ecf92d14e90",
+    "seed_55/train.csv": "4d9a53741c4347a77abbdc728872eb54a34b059293998c838258dca25ee39f1e",
+    "seed_55/validation.csv": "7ec580a51717e8bdb1c5343fd75c5b2c989465098c642e1ec4f67cdd1ee837b1"
+  },
+  "metadata_issues_acknowledged": false,
+  "numpy": "2.3.5",
+  "pair_decisions": {
+    "conservative": 1390,
+    "related": 4
+  },
+  "pillow": "12.3.0",
+  "python": "3.12.14",
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "source_images": 1106,
+  "status": "conservative_grouping_with_unresolved_candidates",
+  "target_ratios": [
+    0.7,
+    0.15,
+    0.15
+  ],
+  "unresolved_pairs_grouped": 1390
+}
