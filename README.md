@@ -3,8 +3,9 @@
 This repository holds the shared data preparation for our rice disease
 classification project. It includes the image inventory, inspection figures,
 review decisions, Python loader and five saved train/validation/test splits.
-The original images are downloaded separately. Model training is the next step;
-there are no trained models or classification results here yet.
+The original images are downloaded separately. The SVM baseline is available in
+`svm_baseline.py`; the ResNet implementations and final comparison results are
+still to be added.
 
 Start with the setup steps below, then read the
 [group handover](GROUP_HANDOVER.md). It explains the work for each method, the
@@ -70,6 +71,20 @@ python -m unittest discover -s data_preprocessing -p 'test_prepare_dataset.py' -
 
 On Windows, activate the environment with `.venv\Scripts\activate`.
 Model training additionally needs the team's chosen PyTorch/torchvision environment.
+
+## Run the SVM baseline
+
+Follow [SVM_BASELINE.md](SVM_BASELINE.md) to install its dependencies in a separate
+Python 3.12 environment. Start with a training/validation run:
+
+```bash
+python svm_baseline.py --seeds 11 --validation-only
+```
+
+Once the baseline settings are fixed, `python svm_baseline.py` runs all five
+shared splits and saves test predictions, metrics and the selected model for each
+seed. The script uses the group's HSV/LBP features and SVM grid search. It reads
+the shared manifests directly; no temporary image splits are needed.
 
 ## Use the shared splits
 

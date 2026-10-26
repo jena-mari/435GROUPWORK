@@ -1,9 +1,9 @@
 # Dataset handover
 
-The dataset preparation is ready for the three model implementations. Use the
-saved splits in this repository so that each method is evaluated on the same
-images. There are no trained models or classification results in the repository
-yet.
+The dataset preparation and SVM baseline are ready to run. The ResNet methods
+still need their implementations. Use the saved splits so that each method is
+evaluated on the same images. Final model results have not yet been added to the
+repository.
 
 ## First steps for every member
 
@@ -110,7 +110,7 @@ python data_preprocessing/verify_dataset.py --root /path/to/Dhan-Shomadhan --aud
 
 | Task | Implementation to complete | What to return |
 |---|---|---|
-| Traditional baseline | Define the handcrafted features and classifier. Fit scaling, feature selection or PCA on training data only. Use validation data for model choices. | Feature definitions, classifier settings, run configuration and test predictions for each seed |
+| Traditional baseline | Run `svm_baseline.py` using [the baseline guide](SVM_BASELINE.md). It extracts HSV/LBP features and selects an RBF SVM on validation macro-F1. The scaler is fitted on training features only. | Run configurations, validation histories, test predictions and metrics for all five seeds |
 | Frozen ResNet-18 | Load ImageNet weights, replace the head with five outputs, freeze the backbone and train the head. Keep backbone BatchNorm running statistics fixed. | Weight source, transforms, selected checkpoint/epoch, validation history and test predictions for each seed |
 | Fine-tuned ResNet-18 | Start from the best frozen checkpoint for the **same seed**. Train `layer4` and the head while earlier stages remain fixed. Keep the agreed BatchNorm running-statistics policy. | Frozen checkpoint used, trainable layers, learning rates, selected checkpoint/epoch and test predictions for each seed |
 | Results and report | Check that all methods used the same version and image IDs. Calculate metrics for the three background scenarios and combine the five runs. | Per-run scores, means and standard deviations, confusion matrices, example errors and limitations |
