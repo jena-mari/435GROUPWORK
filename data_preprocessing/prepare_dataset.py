@@ -184,13 +184,21 @@ def metadata_check(root, inventory):
     return {"available": True, "rows": len(metadata), "sha256": sha_file(path), "issues": issues}
 
 
+def source_images(root, output):
+    """Keep existing audit previews and experiment figures out of the source set."""
+    generated = {output, root / "preprocessing", root / "experiments"}
+    generated.update(p.parent for p in root.glob("*/audit_summary.json"))
+    return sorted(p for p in root.rglob("*") if p.is_file()
+                  and p.suffix.lower() in EXTENSIONS
+                  and not any(p.is_relative_to(directory) for directory in generated)
+                  and not any(part.startswith(".") for part in p.relative_to(root).parts))
+
+
 def audit(root, output, workers=4):
     if output.exists():
         raise ValueError("Audit output already exists. Use a new output directory to preserve reviews.")
     (output / "thumbnails").mkdir(parents=True)
-    files = sorted(p for p in root.rglob("*") if p.is_file()
-                   and p.suffix.lower() in EXTENSIONS and not p.is_relative_to(output)
-                   and not any(part.startswith(".") for part in p.relative_to(root).parts))
+    files = source_images(root, output)
     if not files:
         raise ValueError("No images found")
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -434,9 +442,7 @@ def build(root, output, gallery_reviewed=False, allow_metadata_issues=False,
     if sha_file(output / "inventory.csv") != summary["inventory_sha256"]:
         raise ValueError("Inventory changed: regenerate audit; record corrections in image_decisions.csv")
     rows = read_csv(output / "inventory.csv")
-    source_paths = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()
-                    and p.suffix.lower() in EXTENSIONS and not p.is_relative_to(output)
-                    and not any(part.startswith('.') for part in p.relative_to(root).parts)}
+    source_paths = {p.relative_to(root).as_posix() for p in source_images(root, output)}
     if source_paths != {r["path"] for r in rows}:
         raise ValueError("Source file set changed since audit")
     for r in rows:

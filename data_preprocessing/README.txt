@@ -8,18 +8,22 @@ RGB conversion and figures. NumPy implements hash calculations and allocation.
 The loader does not import PyTorch; it implements the map-style Dataset protocol.
 Use your model environment's PyTorch/torchvision for training.
 
-From the project directory, with scripts in data_preprocessing/:
-    python data_preprocessing/prepare_dataset.py audit
-    # Inspect Dhan-Shomadhan/preprocessing/review.html and gallery_*.html.
+The saved audit and splits are ready to use. For setup and model handover, read
+README.md and GROUP_HANDOVER.md at the repository root.
+
+For a separate audit, use a new output directory from the project root:
+    python data_preprocessing/prepare_dataset.py audit --output Dhan-Shomadhan/preprocessing_rerun
+    # Inspect Dhan-Shomadhan/preprocessing_rerun/review.html and gallery_*.html.
     # Edit pair_review.csv: related / distinct / conservative, plus a reason.
     # Use image_decisions.csv for documented corrections, exclusions, or groups
     # missed by hash screening. Repeated manual_group values join those images.
-    python data_preprocessing/prepare_dataset.py build --gallery-reviewed
+    python data_preprocessing/prepare_dataset.py build --output Dhan-Shomadhan/preprocessing_rerun --gallery-reviewed
 
-Selected policy for this project: conservatively keep unresolved candidates
-together, without pretending that all candidate pairs have been visually reviewed:
-    python data_preprocessing/prepare_dataset.py build --conservative-pending
-This saves conservative_splits/<version>/seed_*/{train,validation,test}.csv.
+For the current comparison, unresolved candidate pairs are kept together.
+The review records which pairs have been inspected. To use this policy in a rerun:
+    python data_preprocessing/prepare_dataset.py build --output Dhan-Shomadhan/preprocessing_rerun --conservative-pending
+This saves conservative_splits/<version>/seed_*/{train,validation,test}.csv
+inside the chosen output directory.
 The original pending reviews remain editable; effective_pair_decisions.csv records
 exactly which unresolved edges were grouped in each saved version.
 This is the chosen evaluation design, not proof that every group is one leaf.
@@ -61,7 +65,9 @@ Pair decisions:
   related: visual evidence supports the same leaf or another related acquisition.
   distinct: visual inspection supports separate leaves/images; document why.
   conservative: uncertain; retain both and keep together to reduce leakage risk.
-Unreviewed candidates block final split generation. Pair grouping is transitive;
+In reviewed mode, unresolved pairs block split generation. With
+--conservative-pending, those pairs are grouped and recorded instead.
+Pair grouping is transitive;
 exact duplicates are joined before removing redundant copies so no relationships
 are lost. Without plant/session identifiers, independent biological sampling
 cannot be guaranteed. Do not claim that perceptual hashing proves independence.
@@ -117,7 +123,8 @@ VERIFICATION
     python -m unittest discover -s data_preprocessing -p 'test_prepare_dataset.py' -v
 Tests cover seeded allocation, cross-background groups, infeasible coverage,
 pending reviews, exact-copy conflicts, transitive deduplication, leakage detection
-and RGB loader/hash behaviour. Model training and torch DataLoader integration
+and RGB loader/hash behaviour, plus exclusion of saved previews during reruns.
+Model training and torch DataLoader integration
 require the training environment and are outside this preprocessing verification.
 
 Keep generated manifests, figures and thumbnails out of the submission archive

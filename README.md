@@ -1,9 +1,15 @@
 # CSCI435 group project: rice leaf disease classification
 
-Shared data preparation for Dhan-Shomadhan. This repository contains the Python
-pipeline, audited inventory, inspection figures, review decisions and five saved
-train/validation/test split sets. The full-resolution source images are downloaded
-separately; they are excluded from Git.
+This repository holds the shared data preparation for our rice disease
+classification project. It includes the image inventory, inspection figures,
+review decisions, Python loader and five saved train/validation/test splits.
+The original images are downloaded separately. Model training is the next step;
+there are no trained models or classification results here yet.
+
+Start with the setup steps below, then read the
+[group handover](GROUP_HANDOVER.md). It explains the work for each method, the
+files to return, how to compare results, and what the data can support in later
+experiments.
 
 ## Get the dataset
 

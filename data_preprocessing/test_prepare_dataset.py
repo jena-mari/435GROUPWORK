@@ -7,7 +7,7 @@ from PIL import Image
 
 from prepare_dataset import (BACKGROUNDS, CLASSES, PARTITIONS, RiceDataset,
                              grouped_split, label_path, resolve_inventory,
-                             validate_split, write_csv)
+                             source_images, validate_split, write_csv)
 
 
 def fixture():
@@ -18,6 +18,25 @@ def fixture():
 
 
 class PreparationTests(unittest.TestCase):
+    def test_rerun_ignores_saved_previews_but_keeps_unknown_source_labels(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            paths = [
+                'Field Background  /Browon Spot/leaf.jpg',
+                'Unknown Background/Unknown Disease/review.jpg',
+                'preprocessing/thumbnails/preview.jpg',
+                'preprocessing/samples_raw.png',
+                'experiments/model/confusion.png',
+                'old_audit/thumbnails/preview.jpg',
+                'preprocessing_rerun/thumbnails/preview.jpg']
+            for relative in paths:
+                p = root / relative
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.touch()
+            (root / 'old_audit/audit_summary.json').write_text('{}')
+            found = source_images(root, root / 'preprocessing_rerun')
+            self.assertEqual({p.relative_to(root).as_posix() for p in found}, set(paths[:2]))
+
     def test_real_folder_aliases_and_trailing_spaces(self):
         self.assertEqual(label_path(Path('Field Background  /Browon Spot/bsf_0.jpg')),
                          ('brown_spot', 'field'))
