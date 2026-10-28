@@ -4,8 +4,9 @@ This repository holds the shared data preparation for our rice disease
 classification project. It includes the image inventory, inspection figures,
 review decisions, Python loader and five saved train/validation/test splits.
 The original images are downloaded separately. The SVM baseline is available in
-`hsv_lbp_svm/`; the ResNet implementations and final comparison results are
-still to be added.
+`hsv_lbp_svm/`. Shared ResNet-18 components and implementation checks are
+available in `resnet18/`; final model experiment loops and comparison results
+are still to be added.
 
 Start with the setup steps below, then read the
 [group handover](GROUP_HANDOVER.md). It explains the work for each method, the
@@ -18,13 +19,13 @@ experiments.
 |---|---|---|
 | Shared preprocessing | [data_preprocessing/](data_preprocessing/README.md) | `Dhan-Shomadhan/preprocessing/`: audit records, shared manifests, thumbnails and inspection figures |
 | HSV–LBP–SVM | [hsv_lbp_svm/](hsv_lbp_svm/README.md) | `Dhan-Shomadhan/svm_cache/` and `Dhan-Shomadhan/experiments/baseline/`; future SVM figures under the experiment's `figures/` folder |
-| ResNet-18 | [resnet18/](resnet18/README.md) | Planned run and figure folders: `Dhan-Shomadhan/experiments/frozen_resnet18/` and `finetuned_resnet18/` |
+| ResNet-18 | [resnet18/](resnet18/README.md) | CNN run and figure folders: `Dhan-Shomadhan/experiments/frozen_resnet18/` and `finetuned_resnet18/` |
 
 ```text
 435GROUPWORK/
 ├── data_preprocessing/       # shared audit, loader, split and figure generators
 ├── hsv_lbp_svm/              # baseline implementation, requirements and tests
-├── resnet18/                 # frozen/fine-tuned method guide; code still pending
+├── resnet18/                 # shared CNN components, role guide and validation checks
 ├── Dhan-Shomadhan/
 │   ├── README.md            # dataset and output map
 │   ├── Field Background  /  # original images, downloaded locally
@@ -118,6 +119,26 @@ shared splits and saves test predictions, metrics and the selected model for eac
 seed. The script uses the group's HSV/LBP features and SVM grid search. It reads
 the shared manifests directly; no temporary image splits are needed.
 
+## Check the shared CNN implementation
+
+[resnet18/](resnet18/README.md) supplies pretrained loading, the agreed 224 x 224
+resize/padding and augmentation policy, model/optimiser guards, checkpoints and
+prediction export for Roles 5 and 6. Use its separate `.venv-cnn` environment:
+
+```bash
+source .venv-cnn/bin/activate
+python -m pip install -r resnet18/requirements.txt
+python -m unittest discover -s resnet18/tests -p 'test_*.py' -v
+python -m resnet18.validate_implementation --dataset /path/to/Dhan-Shomadhan
+```
+
+Create that Python 3.12 environment first if it does not exist. The small checker
+uses training/validation images only. Its checkpoints are marked as diagnostic
+and cannot be substituted for full-experiment checkpoints. Follow the
+[role integration checklist](resnet18/ROLE_VALIDATION.md) before final training.
+The [recorded MPS check](resnet18/validation_reports/common_seed11_mps.json) is
+implementation evidence, not a five-run performance result.
+
 ## Use the shared splits
 
 The current version is recorded in
@@ -202,7 +223,7 @@ experiment outputs, as described in the [dataset map](Dhan-Shomadhan/README.md).
 - [Preprocessing code and instructions](data_preprocessing/README.md)
 - [Dataset and output map](Dhan-Shomadhan/README.md)
 - [Figure catalogue and captions](Dhan-Shomadhan/preprocessing/figures/README.md)
-- [ResNet-18 implementation plan](resnet18/README.md)
+- [ResNet-18 shared components and checks](resnet18/README.md)
 
 Open `Dhan-Shomadhan/preprocessing/dataset_report.html` in a local browser for the
 formatted report, or `review.html` and `gallery_*.html` to inspect the previews.

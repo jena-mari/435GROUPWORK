@@ -1,7 +1,7 @@
 # Dataset handover
 
-The dataset preparation and SVM baseline are ready to run. The ResNet methods
-still need their implementations. Use the saved splits so that each method is
+The dataset preparation and SVM baseline are ready to run. Shared ResNet components are available; the final role-specific CNN loops
+still need to be integrated. Use the saved splits so that each method is
 evaluated on the same images. Final model results have not yet been added to the
 repository.
 
@@ -13,8 +13,9 @@ repository.
 - **HSV–LBP–SVM:** `hsv_lbp_svm/` contains the implementation, requirements,
   tests and method guide. Local results stay under `experiments/baseline/` inside
   the dataset directory.
-- **ResNet-18:** `resnet18/` records the planned frozen and fine-tuned work.
-  CNN training code and model-generated images have not been added yet.
+- **ResNet-18:** `resnet18/` contains shared components, unit tests and a small
+  implementation-check runner. Roles 5 and 6 still need to integrate their full
+  experiment loops. Final CNN test results and model-generated figures are pending.
 - **Inspection images:** `Dhan-Shomadhan/preprocessing/figures/` contains the
   sample figure, candidate pairs and contact sheets. These belong to the shared
   data analysis. Future model figures belong with their model's experiment.
@@ -131,9 +132,9 @@ python data_preprocessing/verify_dataset.py --root /path/to/Dhan-Shomadhan --aud
 | Fine-tuned ResNet-18 | Start from the best frozen checkpoint for the **same seed**. Train `layer4` and the head while earlier stages remain fixed. Keep the agreed BatchNorm running-statistics policy. | Frozen checkpoint used, trainable layers, learning rates, selected checkpoint/epoch and test predictions for each seed |
 | Results and report | Check that all methods used the same version and image IDs. Calculate metrics for the three background scenarios and combine the five runs. | Per-run scores, means and standard deviations, confusion matrices, example errors and limitations |
 
-The proposed ResNet settings from the project plan are below. They have not been
-tested yet; record any changes in the run configuration and describe them in the
-report.
+The full-run ResNet settings from the project plan are below. Common components
+have passed unit and small-subset checks, but the full five-run experiments have
+not been completed. Record actual settings and any changes in each run configuration.
 
 | Setting | Frozen model | Fine-tuned model |
 |---|---|---|
@@ -158,8 +159,14 @@ The relevant PyTorch references are
 [training/evaluation mode](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Module.html)
 and [BatchNorm running statistics](https://docs.pytorch.org/docs/2.14/generated/torch.nn.BatchNorm2d.html).
 
-The [ResNet-18 guide](resnet18/README.md) records the implementation tasks and
-output locations for both CNN variants.
+The [ResNet-18 guide](resnet18/README.md) and
+[role validation checklist](resnet18/ROLE_VALIDATION.md) describe integration.
+Both variants now share 224 x 224 aspect-preserving resize/padding and ImageNet
+normalisation. Training additionally uses horizontal flips (probability 0.5) and
+expanded rotations up to 10 degrees, followed by resize/padding again. Validation
+and test have no random augmentation. The full policy is checked in checkpoints.
+Roles 5 and 6 should use the common optimiser/checkpoint helpers and load the
+selected same-context checkpoint before exporting predictions.
 
 ## Rules for the comparison
 

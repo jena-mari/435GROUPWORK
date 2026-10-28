@@ -1,13 +1,41 @@
-# ResNet-18 methods
+# Shared ResNet-18 components
 
-This folder is reserved for the frozen and partly fine-tuned ResNet-18
-implementations. **Training code, CNN-generated figures and CNN results have not
-been added yet.** The settings below are the project plan, not completed runs.
+This folder provides the common components for **Role 5 (frozen model)** and
+**Role 6 (fine-tuned model)**. Pretrained loading, preprocessing, augmentation,
+model/optimiser checks, epoch helpers, checkpoints and prediction export are
+implemented. The model owners still need to integrate their final experiment
+loops and run the five splits; no final test results are reported here.
+
+| File | Purpose |
+|---|---|
+| `common.py` | Shared model, data, training, checkpoint and export helpers |
+| `validate_implementation.py` | Small pretrained training/validation check for both modes |
+| `tests/test_common.py` | Offline unit and integration checks with synthetic images |
+| `requirements.txt` | Tested CNN environment |
+| `COMMON_COMPONENTS.md` | Agreed image policy, APIs and output contracts |
+| `ROLE_VALIDATION.md` | Integration examples and troubleshooting for Roles 5 and 6 |
+
+From the repository root, use a separate Python 3.12 environment:
+
+```bash
+python3.12 -m venv .venv-cnn
+source .venv-cnn/bin/activate
+python -m pip install -r resnet18/requirements.txt
+python -m unittest discover -s resnet18/tests -p 'test_*.py' -v
+python -m resnet18.validate_implementation --dataset /path/to/Dhan-Shomadhan
+```
+
+A `.venv-cnn` is already set up in the original checkout. On Windows use
+`py -3.12` and `.venv-cnn\Scripts\activate`. Full instructions are in
+[COMMON_COMPONENTS.md](COMMON_COMPONENTS.md). The diagnostic uses 10 training
+and 10 validation images by default and never evaluates test images.
 
 Both variants must read the same `RiceDataset` loader, disease mapping and
-current manifest version used by the HSV–LBP–SVM baseline. The input transform,
-normalisation and training augmentation policy still need to be recorded in the
-training implementation. SVM resizing and blurring are specific to that method.
+current manifest version used by the HSV–LBP–SVM baseline. The agreed policy is
+224 x 224 aspect-preserving resize/padding, ImageNet normalisation, and training-only
+horizontal flips and rotations up to 10 degrees. Both variants use this same
+policy, recorded in each checkpoint. SVM resizing and blurring are specific to
+that method.
 
 | Variant | Starting checkpoint | Trainable parameters | Planned settings | Local output directory |
 |---|---|---|---|---|

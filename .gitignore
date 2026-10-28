@@ -9,6 +9,7 @@ Dhan-Shomadhan/**
 *.zip
 .venv/
 .venv-svm/
+.venv-cnn/
 venv/
 __pycache__/
 *.py[cod]

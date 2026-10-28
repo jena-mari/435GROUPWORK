@@ -14,8 +14,10 @@ Download instructions are in the [project README](../README.md).
 | `svm_cache/` | HSV–LBP–SVM | Local fixed-feature cache; scalers are fitted separately for each run |
 | `experiments/baseline/` | HSV–LBP–SVM | Per-seed selected models, predictions, configurations and metrics |
 | `experiments/baseline_validation/` | HSV–LBP–SVM | Validation-only checks; no test scores |
-| `experiments/frozen_resnet18/` | Frozen ResNet-18 | Planned location for CNN run files |
-| `experiments/finetuned_resnet18/` | Fine-tuned ResNet-18 | Planned location for CNN run files |
+| `experiments/frozen_resnet18/` | Frozen ResNet-18 | Full-run CNN files after the Role 5 loop is integrated |
+| `experiments/finetuned_resnet18/` | Fine-tuned ResNet-18 | Full-run CNN files after the Role 6 loop is integrated |
+| `experiments/resnet18_checks/` | CNN development | Small training/validation checks; not final results |
+| `model_cache/torchvision/` | Both CNN variants | Official pretrained weight files, cached locally |
 
 The raw-image, cache and experiment directories are local and may not appear in
 a fresh clone. Original images are not included in Git. Preprocessing figures
@@ -30,3 +32,7 @@ Future model-generated images belong under
 `experiments/<method>/figures/`, beside the relevant run records. Use separate
 filenames for different seeds and background scenarios. Small selected results
 can be added explicitly; checkpoints and feature caches should remain local.
+
+The [shared CNN components](../resnet18/README.md) use the same manifests and
+store preprocessing/seed identity in checkpoints. Diagnostic checkpoints are
+marked separately and cannot be used as full-experiment checkpoints.

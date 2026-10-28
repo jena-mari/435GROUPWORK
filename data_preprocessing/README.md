@@ -34,3 +34,8 @@ output directory until the group agrees to adopt it.
 
 The [project README](../README.md) covers dataset setup. The
 [group handover](../GROUP_HANDOVER.md) covers training and results.
+
+The CNN-specific policy and checkpoint guards are implemented in
+[`resnet18/common.py`](../resnet18/common.py). The shared loader still returns
+RGB PIL images unless a transform is supplied; the CNN factory supplies the
+agreed tensor transform while keeping background and image IDs as metadata.
