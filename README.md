@@ -4,13 +4,45 @@ This repository holds the shared data preparation for our rice disease
 classification project. It includes the image inventory, inspection figures,
 review decisions, Python loader and five saved train/validation/test splits.
 The original images are downloaded separately. The SVM baseline is available in
-`svm_baseline.py`; the ResNet implementations and final comparison results are
+`hsv_lbp_svm/`; the ResNet implementations and final comparison results are
 still to be added.
 
 Start with the setup steps below, then read the
 [group handover](GROUP_HANDOVER.md). It explains the work for each method, the
 files to return, how to compare results, and what the data can support in later
 experiments.
+
+## Where each part belongs
+
+| Area | Code and instructions | Data, results and images |
+|---|---|---|
+| Shared preprocessing | [data_preprocessing/](data_preprocessing/README.md) | `Dhan-Shomadhan/preprocessing/`: audit records, shared manifests, thumbnails and inspection figures |
+| HSV–LBP–SVM | [hsv_lbp_svm/](hsv_lbp_svm/README.md) | `Dhan-Shomadhan/svm_cache/` and `Dhan-Shomadhan/experiments/baseline/`; future SVM figures under the experiment's `figures/` folder |
+| ResNet-18 | [resnet18/](resnet18/README.md) | Planned run and figure folders: `Dhan-Shomadhan/experiments/frozen_resnet18/` and `finetuned_resnet18/` |
+
+```text
+435GROUPWORK/
+├── data_preprocessing/       # shared audit, loader, split and figure generators
+├── hsv_lbp_svm/              # baseline implementation, requirements and tests
+├── resnet18/                 # frozen/fine-tuned method guide; code still pending
+├── Dhan-Shomadhan/
+│   ├── README.md            # dataset and output map
+│   ├── Field Background  /  # original images, downloaded locally
+│   ├── White Background /   # original images, downloaded locally
+│   ├── preprocessing/
+│   │   ├── figures/         # sample images, candidate-pair and contact sheets
+│   │   ├── thumbnails/      # inspection previews, not training images
+│   │   ├── conservative_splits/  # shared versioned train/validation/test CSVs
+│   │   └── ...              # audit CSV/JSON files and review HTML
+│   ├── svm_cache/           # local fixed-feature cache
+│   └── experiments/         # local per-method training/evaluation outputs
+└── GROUP_HANDOVER.md         # next steps and common result format
+```
+
+The source-image paths, class IDs and all 15 shared manifests are unchanged.
+Only the code and generated inspection-image locations have been organised.
+The small root-level SVM entry points remain for older commands; the maintained
+implementation and requirements are in `hsv_lbp_svm/`.
 
 ## Get the dataset
 
@@ -74,14 +106,14 @@ Model training additionally needs the team's chosen PyTorch/torchvision environm
 
 ## Run the SVM baseline
 
-Follow [SVM_BASELINE.md](SVM_BASELINE.md) to install its dependencies in a separate
+Follow [the HSV–LBP–SVM guide](hsv_lbp_svm/README.md) to install its dependencies in a separate
 Python 3.12 environment. Start with a training/validation run:
 
 ```bash
-python svm_baseline.py --seeds 11 --validation-only
+python -m hsv_lbp_svm.svm_baseline --seeds 11 --validation-only
 ```
 
-Once the baseline settings are fixed, `python svm_baseline.py` runs all five
+Once the baseline settings are fixed, `python -m hsv_lbp_svm.svm_baseline` runs all five
 shared splits and saves test predictions, metrics and the selected model for each
 seed. The script uses the group's HSV/LBP features and SVM grid search. It reads
 the shared manifests directly; no temporary image splits are needed.
@@ -135,14 +167,42 @@ that every candidate is the same leaf. False grouping and missed relationships
 remain possible. The largest group has **461 white-background images** and is
 assigned to training in every run, which limits test coverage.
 
-![Dataset examples](Dhan-Shomadhan/preprocessing/samples_raw.png)
+## Generated images
+
+The images added at the repository root were exact copies of the preprocessing
+figures. The canonical copies are now together under
+[`Dhan-Shomadhan/preprocessing/figures/`](Dhan-Shomadhan/preprocessing/figures/README.md).
+They illustrate the dataset and grouping process; they are not SVM or ResNet
+predictions.
+
+![Dataset examples](Dhan-Shomadhan/preprocessing/figures/samples_raw.png)
+
+*Examples of the five diseases under field and white-background conditions.*
+
+![Candidate-pair sheet](Dhan-Shomadhan/preprocessing/figures/pairs_strong_00.jpg)
+
+*Pairs flagged by perceptual-hash screening. Some are repeated views; others
+remain unresolved. Similarity alone does not confirm shared-leaf identity.*
+
+Rebuild the audit figures from the committed inventory and thumbnails with:
+
+```bash
+python data_preprocessing/make_figures.py
+```
+
+This does not change the shared splits. Future SVM and CNN learning curves,
+confusion matrices or feature visualisations belong with the relevant method's
+experiment outputs, as described in the [dataset map](Dhan-Shomadhan/README.md).
 
 ## Inspect the reports
 
 - [Problem Description, preparation approach and algorithm](Dhan-Shomadhan/preprocessing/report_sections.txt)
 - [Raw disease/background counts](Dhan-Shomadhan/preprocessing/counts_raw.csv)
 - [Verification record](Dhan-Shomadhan/preprocessing/VERIFICATION.txt)
-- [Detailed usage instructions](data_preprocessing/README.txt)
+- [Preprocessing code and instructions](data_preprocessing/README.md)
+- [Dataset and output map](Dhan-Shomadhan/README.md)
+- [Figure catalogue and captions](Dhan-Shomadhan/preprocessing/figures/README.md)
+- [ResNet-18 implementation plan](resnet18/README.md)
 
 Open `Dhan-Shomadhan/preprocessing/dataset_report.html` in a local browser for the
 formatted report, or `review.html` and `gallery_*.html` to inspect the previews.

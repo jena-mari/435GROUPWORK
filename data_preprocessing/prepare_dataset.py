@@ -157,7 +157,9 @@ def sample_figure(rows, output, name):
                 with Image.open(output / "thumbnails" / f"{r['image_id']}.jpg") as im:
                     canvas.paste(im, (x + (230 - im.width) // 2, y))
                 draw.text((x + 35, y + 307), Path(r["path"]).name, fill="black", font=small)
-    canvas.save(output / name)
+    figures = output / "figures"
+    figures.mkdir(exist_ok=True)
+    canvas.save(figures / name)
 
 
 def metadata_check(root, inventory):

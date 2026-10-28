@@ -123,7 +123,7 @@ Input: dataset root; seeds {11,22,33,44,55}; target ratios {0.70,0.15,0.15}.
         f'<p>All {len(raw):,} files decode; {summary["exact_duplicate_groups"]} exact-copy groups; '
         f'{summary["metadata_issues"]} metadata/folder disagreements. These checks establish file '
         'and annotation consistency, not independent biological label verification.</p>',
-        '<h2>2. Sample-image figure</h2><img src="samples_raw.png" alt="One image per disease and background">',
+        '<h2>2. Sample-image figure</h2><img src="figures/samples_raw.png" alt="One image per disease and background">',
         '<p class="caption">Figure 1. First readable image in sorted path order for each disease/background '
         'stratum. Original aspect ratios are preserved; no lesion crops or background removal are applied. '
         'These are dataset examples, not an independent confirmation of disease.</p>',

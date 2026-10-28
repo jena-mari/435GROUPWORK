@@ -5,6 +5,22 @@ still need their implementations. Use the saved splits so that each method is
 evaluated on the same images. Final model results have not yet been added to the
 repository.
 
+## Folder responsibilities
+
+- **Shared preparation:** `data_preprocessing/` contains the audit, loader,
+  split generator and figure generator. Shared data and manifests remain under
+  `Dhan-Shomadhan/preprocessing/`.
+- **HSV–LBP–SVM:** `hsv_lbp_svm/` contains the implementation, requirements,
+  tests and method guide. Local results stay under `experiments/baseline/` inside
+  the dataset directory.
+- **ResNet-18:** `resnet18/` records the planned frozen and fine-tuned work.
+  CNN training code and model-generated images have not been added yet.
+- **Inspection images:** `Dhan-Shomadhan/preprocessing/figures/` contains the
+  sample figure, candidate pairs and contact sheets. These belong to the shared
+  data analysis. Future model figures belong with their model's experiment.
+
+Read the [dataset map](Dhan-Shomadhan/README.md) for full output paths.
+
 ## First steps for every member
 
 1. Follow the [README](README.md) to clone the repository, download version 1 of
@@ -41,7 +57,7 @@ through the manifests.
 |---|---|---|
 | Image inventory | `Dhan-Shomadhan/preprocessing/inventory.csv` | Original paths, supplied labels, dimensions, hashes and readability checks |
 | Disease/background counts | `Dhan-Shomadhan/preprocessing/counts_raw.csv` | Dataset description and class/background imbalance |
-| Inspection figure | `Dhan-Shomadhan/preprocessing/samples_raw.png` | One example of each disease in each background for the report |
+| Inspection figure | `Dhan-Shomadhan/preprocessing/figures/samples_raw.png` | One example of each disease in each background for the report |
 | Similarity review | `Dhan-Shomadhan/preprocessing/pair_review.csv` | Candidate relationships and recorded visual decisions |
 | Model inputs | Current version's `seed_*/train.csv`, `validation.csv`, `test.csv` | Fixed image membership for each run |
 | Label mapping | Current version's `label_mapping.json` | The same disease IDs and output order for every method |
@@ -110,7 +126,7 @@ python data_preprocessing/verify_dataset.py --root /path/to/Dhan-Shomadhan --aud
 
 | Task | Implementation to complete | What to return |
 |---|---|---|
-| Traditional baseline | Run `svm_baseline.py` using [the baseline guide](SVM_BASELINE.md). It extracts HSV/LBP features and selects an RBF SVM on validation macro-F1. The scaler is fitted on training features only. | Run configurations, validation histories, test predictions and metrics for all five seeds |
+| Traditional baseline | Run `python -m hsv_lbp_svm.svm_baseline` using [the baseline guide](hsv_lbp_svm/README.md). It extracts HSV/LBP features and selects an RBF SVM on validation macro-F1. The scaler is fitted on training features only. | Run configurations, validation histories, test predictions and metrics for all five seeds |
 | Frozen ResNet-18 | Load ImageNet weights, replace the head with five outputs, freeze the backbone and train the head. Keep backbone BatchNorm running statistics fixed. | Weight source, transforms, selected checkpoint/epoch, validation history and test predictions for each seed |
 | Fine-tuned ResNet-18 | Start from the best frozen checkpoint for the **same seed**. Train `layer4` and the head while earlier stages remain fixed. Keep the agreed BatchNorm running-statistics policy. | Frozen checkpoint used, trainable layers, learning rates, selected checkpoint/epoch and test predictions for each seed |
 | Results and report | Check that all methods used the same version and image IDs. Calculate metrics for the three background scenarios and combine the five runs. | Per-run scores, means and standard deviations, confusion matrices, example errors and limitations |
@@ -141,6 +157,9 @@ The relevant PyTorch references are
 [data loading and collation](https://docs.pytorch.org/docs/2.14/data.html),
 [training/evaluation mode](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Module.html)
 and [BatchNorm running statistics](https://docs.pytorch.org/docs/2.14/generated/torch.nn.BatchNorm2d.html).
+
+The [ResNet-18 guide](resnet18/README.md) records the implementation tasks and
+output locations for both CNN variants.
 
 ## Rules for the comparison
 
@@ -203,6 +222,10 @@ own predictions; combined macro-F1 is not an average of the two background
 macro-F1 scores. Then report the mean and sample standard deviation (`ddof=1`)
 of the five per-run scores for each method and scenario. Keep the per-run scores
 available so the methods can also be compared seed by seed.
+
+Place model-generated figures in `experiments/<method>/figures/`, with seed and
+background scenario in the filename. Keep shared inspection figures in
+`preprocessing/figures/`.
 
 The `experiments/` directory is ignored by Git. Share the small configuration,
 prediction and metric files with explicit paths when they are ready, for example:

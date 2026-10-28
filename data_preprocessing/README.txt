@@ -9,7 +9,10 @@ The loader does not import PyTorch; it implements the map-style Dataset protocol
 Use your model environment's PyTorch/torchvision for training.
 
 The saved audit and splits are ready to use. For setup and model handover, read
-README.md and GROUP_HANDOVER.md at the repository root.
+README.md and GROUP_HANDOVER.md at the repository root. The folder map is in
+data_preprocessing/README.md and Dhan-Shomadhan/README.md. Generated inspection
+images are under Dhan-Shomadhan/preprocessing/figures/. Model-specific code
+is grouped in hsv_lbp_svm/ and resnet18/.
 
 For a separate audit, use a new output directory from the project root:
     python data_preprocessing/prepare_dataset.py audit --output Dhan-Shomadhan/preprocessing_rerun
@@ -135,3 +138,8 @@ the new version path; update this pointer explicitly when the whole team adopts
 that version. Never change a team's manifest version silently during experiments.
 Recreate the inspection report with:
     python data_preprocessing/make_report.py Dhan-Shomadhan/preprocessing Dhan-Shomadhan/preprocessing/<version>
+
+Rebuild inspection figures from saved thumbnails and audit records with:
+    python data_preprocessing/make_figures.py
+This writes samples, candidate-pair sheets and contact sheets under the selected
+audit output's figures/ directory. Review HTML continues to use thumbnails/.

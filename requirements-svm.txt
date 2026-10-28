@@ -1,7 +1,2 @@
-# Separate baseline environment: OpenCV 4.12 requires NumPy below 2.3.
-numpy==2.2.6
-Pillow==12.3.0
-opencv-python==4.12.0.88
-scipy==1.16.3
-scikit-image==0.25.2
-scikit-learn==1.7.2
+# Compatibility file; install the requirements maintained with the baseline.
+-r hsv_lbp_svm/requirements.txt
