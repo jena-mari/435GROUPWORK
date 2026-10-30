@@ -1,0 +1,107 @@
+{
+  "checked_on": "2026-10-30",
+  "passed": true,
+  "scope": "implementation_check",
+  "final_experiment": false,
+  "seed": 11,
+  "device": "mps",
+  "training_images": 10,
+  "validation_images": 10,
+  "test_images_evaluated": 0,
+  "epochs": 1,
+  "batch_size": 4,
+  "trainable_parameters": 2565,
+  "driver_code_sha256": "b35941160b6efa0f728b52849977fc4aaf5c993edd4e817176a16b1386449d9b",
+  "common_code_sha256": "d79c100d32aebc511374e1ddd3dd78e42d9405d34052cfbc807aae8e5d8eef0e",
+  "context": {
+    "background_mapping": {
+      "field": 0,
+      "white": 1
+    },
+    "check_image_ids": {
+      "train": [
+        "04c4d4abf44b76925e86",
+        "a4b1bab9e72e41986195",
+        "4d622613abb32833555d",
+        "89c83fac123b721cc232",
+        "a14425a28d7f91e10031",
+        "385ca0dcedf0967b732c",
+        "1cccc717f2a083d28b3c",
+        "fdbc1000c440bbbdb3d8",
+        "c2a497cb9c81e39ca193",
+        "4a7a8cbd8c62657fb394"
+      ],
+      "validation": [
+        "64da134105f8775d0d1e",
+        "cb9180f899971e90aa71",
+        "1b7ad52987d17d397abb",
+        "0cbf7c5bce9061d560ea",
+        "1fdf565e9e7aee6a73ea",
+        "4c636fd598ec0e38f0ed",
+        "911091e96f08b83a262a",
+        "aed522853f884f665171",
+        "fb7f1ea308f81be438ff",
+        "ccd7c01dcc75bf1eb93b"
+      ]
+    },
+    "class_mapping": {
+      "brown_spot": 0,
+      "leaf_scald": 1,
+      "rice_blast": 2,
+      "rice_tungro": 3,
+      "sheath_blight": 4
+    },
+    "manifest_sha256": {
+      "test": "a296c3237766d5cb5fd023087c30594efd967bddca3967609dc8d80aff144f8e",
+      "train": "41b1d6ea540e98e59e52b3fec72917f8d986cab4e2ab6a49a3bb92e6e968877e",
+      "validation": "5bb1f81c873532e4c49d8adcf992d8c45a2516c2bcfc5019e0662c1d68f9b273"
+    },
+    "manifest_version": "conservative_splits/bad260e9eda16df2",
+    "policy": {
+      "color_jitter": false,
+      "evaluation_order": "letterbox, tensor, normalise",
+      "fill": [
+        124,
+        116,
+        104
+      ],
+      "horizontal_flip_probability": 0.5,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "resize": "bilinear aspect-ratio-preserving letterbox",
+      "rotation_degrees": 10.0,
+      "size": 224,
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "training_order": "letterbox, horizontal flip, expanded rotation, letterbox, tensor, normalise"
+    },
+    "run_scope": "implementation_check",
+    "seed": 11
+  },
+  "frozen_contract_check": {
+    "changed_parameter_or_buffer_names": [
+      "fc.weight",
+      "fc.bias"
+    ],
+    "fixed_batchnorm_buffers": true,
+    "frozen_parameters_unchanged": true
+  },
+  "source_images_verified": 1106,
+  "manifest_checksums_verified": 15,
+  "supplied_source_sha256": {
+    "train_frozen.py": "139b742fc993d469b3765ed09711dfbd308029f9455319c8ccbdd353ca4c283b",
+    "common.py": "8dbd4b3cec6066239c447289be9861bc74241e6c8a7894038065bc1811bdfbd2",
+    "ROLE5_FROZEN_EXPERIMENTS.md": "20340c31f5014750348f092bda94723eb5600b8edd1396b459afd7fcbe9791cd"
+  },
+  "tests": {
+    "cnn": 15,
+    "evaluation": 6
+  },
+  "limitations": "One epoch on 10 training and 10 validation images checks execution, not final performance. Full five-run frozen and fine-tuned results remain pending."
+}

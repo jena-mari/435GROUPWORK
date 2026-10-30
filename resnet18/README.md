@@ -1,13 +1,15 @@
-# Shared ResNet-18 components
+# ResNet-18 experiments and shared components
 
 This folder provides the common components for **Role 5 (frozen model)** and
 **Role 6 (fine-tuned model)**. Pretrained loading, preprocessing, augmentation,
 model/optimiser checks, epoch helpers, checkpoints and prediction export are
-implemented. The model owners still need to integrate their final experiment
-loops and run the five splits; no final test results are reported here.
+implemented. Role 5's frozen experiment is integrated in `train_frozen.py`.
+The fine-tuned experiment driver and final five-run test results are still pending.
 
 | File | Purpose |
 |---|---|
+| `train_frozen.py` | Frozen experiment using the current shared components |
+| `ROLE5_FROZEN_EXPERIMENTS.md` | Training, validation-only and test-export commands |
 | `common.py` | Shared model, data, training, checkpoint and export helpers |
 | `validate_implementation.py` | Small pretrained training/validation check for both modes |
 | `tests/test_common.py` | Offline unit and integration checks with synthetic images |
@@ -41,6 +43,10 @@ that method.
 |---|---|---|---|---|
 | Frozen | ImageNet-pretrained ResNet-18 | Replacement five-class linear head | Adam, head LR `1e-3`, batch size 32, up to 30 epochs | `Dhan-Shomadhan/experiments/frozen_resnet18/` |
 | Fine-tuned | Best frozen checkpoint from the same seed | `layer4` and the five-class head | Adam, `layer4` LR `1e-5`, head LR `1e-4`, batch size 32, up to 20 additional epochs | `Dhan-Shomadhan/experiments/finetuned_resnet18/` |
+
+Follow [the frozen experiment guide](ROLE5_FROZEN_EXPERIMENTS.md) to run Role 5's
+loop and pass its selected `best.pt` checkpoints to Role 6. Use the
+[evaluation package](../evaluation/README.md) once saved test predictions are ready.
 
 Use validation macro-F1 for checkpoint selection, with five consecutive epochs
 without improvement as the stopping rule. Keep the agreed BatchNorm running

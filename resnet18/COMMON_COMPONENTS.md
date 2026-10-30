@@ -1,7 +1,9 @@
 # Common CNN setup
 
 These components implement the shared parts of the two ResNet experiments.
-Role 5 owns the frozen-model experiment loop; Role 6 owns the fine-tuned loop.
+Role 5's supplied frozen loop is integrated in `train_frozen.py`; see the
+[frozen experiment guide](ROLE5_FROZEN_EXPERIMENTS.md). Role 6 owns the pending
+fine-tuned experiment driver.
 The common checks do not replace review of those loops or the final five-run
 evaluation.
 

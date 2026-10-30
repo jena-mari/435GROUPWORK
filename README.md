@@ -5,8 +5,9 @@ classification project. It includes the image inventory, inspection figures,
 review decisions, Python loader and five saved train/validation/test splits.
 The original images are downloaded separately. The SVM baseline is available in
 `hsv_lbp_svm/`. Shared ResNet-18 components and implementation checks are
-available in `resnet18/`; final model experiment loops and comparison results
-are still to be added.
+available in `resnet18/`, including the integrated frozen-model experiment.
+The evaluation package is in `evaluation/`. The fine-tuned experiment driver and
+final three-method comparison results are still pending.
 
 Start with the setup steps below, then read the
 [group handover](GROUP_HANDOVER.md). It explains the work for each method, the
@@ -19,13 +20,15 @@ experiments.
 |---|---|---|
 | Shared preprocessing | [data_preprocessing/](data_preprocessing/README.md) | `Dhan-Shomadhan/preprocessing/`: audit records, shared manifests, thumbnails and inspection figures |
 | HSV–LBP–SVM | [hsv_lbp_svm/](hsv_lbp_svm/README.md) | `Dhan-Shomadhan/svm_cache/` and `Dhan-Shomadhan/experiments/baseline/`; future SVM figures under the experiment's `figures/` folder |
-| ResNet-18 | [resnet18/](resnet18/README.md) | CNN run and figure folders: `Dhan-Shomadhan/experiments/frozen_resnet18/` and `finetuned_resnet18/` |
+| ResNet-18 | [resnet18/](resnet18/README.md), [frozen experiment](resnet18/ROLE5_FROZEN_EXPERIMENTS.md) | CNN run and figure folders: `Dhan-Shomadhan/experiments/frozen_resnet18/` and `finetuned_resnet18/` |
+| Evaluation/comparison | [evaluation/](evaluation/README.md) | `experiments/comparison/`; supplied thumbnail results under `evaluation/reference/` |
 
 ```text
 435GROUPWORK/
 ├── data_preprocessing/       # shared audit, loader, split and figure generators
 ├── hsv_lbp_svm/              # baseline implementation, requirements and tests
-├── resnet18/                 # shared CNN components, role guide and validation checks
+├── resnet18/                 # shared CNN components, frozen experiment and checks
+├── evaluation/               # comparative metrics, figures and preliminary reference
 ├── Dhan-Shomadhan/
 │   ├── README.md            # dataset and output map
 │   ├── Field Background  /  # original images, downloaded locally
@@ -41,7 +44,7 @@ experiments.
 ```
 
 The source-image paths, class IDs and all 15 shared manifests are unchanged.
-Only the code and generated inspection-image locations have been organised.
+Use the same fixed partitions for SVM and both CNN variants.
 The small root-level SVM entry points remain for older commands; the maintained
 implementation and requirements are in `hsv_lbp_svm/`.
 
@@ -139,6 +142,28 @@ and cannot be substituted for full-experiment checkpoints. Follow the
 The [recorded MPS check](resnet18/validation_reports/common_seed11_mps.json) is
 implementation evidence, not a five-run performance result.
 
+## Run the frozen experiment and compare results
+
+The [frozen experiment guide](resnet18/ROLE5_FROZEN_EXPERIMENTS.md) explains
+small checks, five-seed training and test export. Start with:
+
+```bash
+python -m resnet18.train_frozen --dataset /path/to/Dhan-Shomadhan \
+  --seeds 11 --smoke --epochs 1 --batch-size 4
+```
+
+For all five full-data runs, use `--validation-only` without `--smoke`, then
+`--evaluate-only` after the procedure is fixed. Selected checkpoints are saved
+as `experiments/frozen_resnet18/seed_<seed>/best.pt` for the fine-tuned model.
+Existing run directories are preserved. The [evaluation guide](evaluation/README.md)
+shows how to compare the three methods' saved predictions and generate per-run,
+five-run and per-class metrics and confusion matrices. Every supplied method
+must have all five seeds and match the shared test manifests.
+
+The supplied Role 4 thumbnail-SVM experiment is preserved under
+`evaluation/reference/role4_thumbnail_svm/`. It is preliminary evidence and must
+remain separate from the full-resolution SVM and CNN results.
+
 ## Use the shared splits
 
 The current version is recorded in
@@ -224,6 +249,8 @@ experiment outputs, as described in the [dataset map](Dhan-Shomadhan/README.md).
 - [Dataset and output map](Dhan-Shomadhan/README.md)
 - [Figure catalogue and captions](Dhan-Shomadhan/preprocessing/figures/README.md)
 - [ResNet-18 shared components and checks](resnet18/README.md)
+- [Frozen ResNet-18 experiment](resnet18/ROLE5_FROZEN_EXPERIMENTS.md)
+- [Evaluation and comparative analysis](evaluation/README.md)
 
 Open `Dhan-Shomadhan/preprocessing/dataset_report.html` in a local browser for the
 formatted report, or `review.html` and `gallery_*.html` to inspect the previews.

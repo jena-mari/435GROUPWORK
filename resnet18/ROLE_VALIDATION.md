@@ -1,8 +1,9 @@
 # Role 5 and Role 6 integration checks
 
-The common code is checked. The separate role implementations have not yet been
-supplied for review. Use this checklist to validate those loops before the final
-five-run test evaluation.
+The common code and integrated Role 5 frozen loop have passed unit and small
+real-image checks. Follow [the frozen guide](ROLE5_FROZEN_EXPERIMENTS.md) for its
+commands. The Role 6 full experiment driver has not yet been supplied. Use this
+checklist when integrating that loop before the final five-run test evaluation.
 
 ## Role 5: frozen model
 

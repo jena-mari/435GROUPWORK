@@ -14,9 +14,10 @@ Download instructions are in the [project README](../README.md).
 | `svm_cache/` | HSV–LBP–SVM | Local fixed-feature cache; scalers are fitted separately for each run |
 | `experiments/baseline/` | HSV–LBP–SVM | Per-seed selected models, predictions, configurations and metrics |
 | `experiments/baseline_validation/` | HSV–LBP–SVM | Validation-only checks; no test scores |
-| `experiments/frozen_resnet18/` | Frozen ResNet-18 | Full-run CNN files after the Role 5 loop is integrated |
+| `experiments/frozen_resnet18/` | Frozen ResNet-18 | Selected `best.pt`, histories and predictions from the integrated frozen experiment |
 | `experiments/finetuned_resnet18/` | Fine-tuned ResNet-18 | Full-run CNN files after the Role 6 loop is integrated |
 | `experiments/resnet18_checks/` | CNN development | Small training/validation checks; not final results |
+| `experiments/comparison/` | Evaluation/analysis | Five-run comparisons, per-class metrics, prediction review and confusion matrices |
 | `model_cache/torchvision/` | Both CNN variants | Official pretrained weight files, cached locally |
 
 The raw-image, cache and experiment directories are local and may not appear in
@@ -36,3 +37,9 @@ can be added explicitly; checkpoints and feature caches should remain local.
 The [shared CNN components](../resnet18/README.md) use the same manifests and
 store preprocessing/seed identity in checkpoints. Diagnostic checkpoints are
 marked separately and cannot be used as full-experiment checkpoints.
+
+The [frozen experiment guide](../resnet18/ROLE5_FROZEN_EXPERIMENTS.md) and
+[evaluation guide](../evaluation/README.md) explain execution and handover.
+Role 4's supplied thumbnail results are separately archived in
+`evaluation/reference/role4_thumbnail_svm/` at the repository root; they are
+preliminary and do not replace the full-resolution baseline.

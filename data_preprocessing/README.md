@@ -39,3 +39,9 @@ The CNN-specific policy and checkpoint guards are implemented in
 [`resnet18/common.py`](../resnet18/common.py). The shared loader still returns
 RGB PIL images unless a transform is supplied; the CNN factory supplies the
 agreed tensor transform while keeping background and image IDs as metadata.
+
+The integrated frozen training command and selected-checkpoint handover are in
+[the frozen experiment guide](../resnet18/ROLE5_FROZEN_EXPERIMENTS.md).
+[The evaluation package](../evaluation/README.md) reads each method's five saved
+test prediction files against these same manifests; it does not regenerate
+splits or train on inspection thumbnails.

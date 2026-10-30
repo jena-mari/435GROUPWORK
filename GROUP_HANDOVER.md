@@ -1,8 +1,9 @@
 # Dataset handover
 
-The dataset preparation and SVM baseline are ready to run. Shared ResNet components are available; the final role-specific CNN loops
-still need to be integrated. Use the saved splits so that each method is
-evaluated on the same images. Final model results have not yet been added to the
+The dataset preparation, SVM baseline and frozen ResNet-18 experiment are ready
+to run. Shared CNN components and the evaluation package are available; the
+fine-tuned experiment driver still needs to be supplied. Use the saved splits so
+that each method is evaluated on the same images. Final model results have not yet been added to the
 repository.
 
 ## Folder responsibilities
@@ -14,8 +15,11 @@ repository.
   tests and method guide. Local results stay under `experiments/baseline/` inside
   the dataset directory.
 - **ResNet-18:** `resnet18/` contains shared components, unit tests and a small
-  implementation-check runner. Roles 5 and 6 still need to integrate their full
-  experiment loops. Final CNN test results and model-generated figures are pending.
+  implementation-check runner and the integrated Role 5 frozen experiment.
+  Role 6 still needs its full experiment driver. Final CNN test results are pending.
+- **Evaluation:** `evaluation/` validates saved predictions against all five test
+  manifests and generates comparative tables and matrices. Supplied thumbnail-SVM
+  results stay separately labelled under `evaluation/reference/`.
 - **Inspection images:** `Dhan-Shomadhan/preprocessing/figures/` contains the
   sample figure, candidate pairs and contact sheets. These belong to the shared
   data analysis. Future model figures belong with their model's experiment.
@@ -128,9 +132,9 @@ python data_preprocessing/verify_dataset.py --root /path/to/Dhan-Shomadhan --aud
 | Task | Implementation to complete | What to return |
 |---|---|---|
 | Traditional baseline | Run `python -m hsv_lbp_svm.svm_baseline` using [the baseline guide](hsv_lbp_svm/README.md). It extracts HSV/LBP features and selects an RBF SVM on validation macro-F1. The scaler is fitted on training features only. | Run configurations, validation histories, test predictions and metrics for all five seeds |
-| Frozen ResNet-18 | Load ImageNet weights, replace the head with five outputs, freeze the backbone and train the head. Keep backbone BatchNorm running statistics fixed. | Weight source, transforms, selected checkpoint/epoch, validation history and test predictions for each seed |
+| Frozen ResNet-18 | Run `python -m resnet18.train_frozen` using the [frozen guide](resnet18/ROLE5_FROZEN_EXPERIMENTS.md). The integrated loop freezes the backbone and its BatchNorm statistics and selects the five-class head by validation macro-F1. | Weight source, transforms, selected checkpoint/epoch, validation history and test predictions for each seed |
 | Fine-tuned ResNet-18 | Start from the best frozen checkpoint for the **same seed**. Train `layer4` and the head while earlier stages remain fixed. Keep the agreed BatchNorm running-statistics policy. | Frozen checkpoint used, trainable layers, learning rates, selected checkpoint/epoch and test predictions for each seed |
-| Results and report | Check that all methods used the same version and image IDs. Calculate metrics for the three background scenarios and combine the five runs. | Per-run scores, means and standard deviations, confusion matrices, example errors and limitations |
+| Results and report | Use [the evaluation package](evaluation/README.md) to validate all five runs against the shared manifests and calculate metrics for the three backgrounds. Inspect original images for error analysis. | Per-run scores, means and standard deviations, confusion matrices, example errors and limitations |
 
 The full-run ResNet settings from the project plan are below. Common components
 have passed unit and small-subset checks, but the full five-run experiments have
@@ -147,10 +151,9 @@ not been completed. Record actual settings and any changes in each run configura
 | Selection metric | Validation macro-F1 | Validation macro-F1 |
 | Early stopping | Five consecutive epochs without improvement | Same rule, with its own validation selection |
 
-Both variants should use the same input-size, normalisation and augmentation
-policy. Check how resizing and cropping affect narrow leaves and symptoms near
-the edges before fixing the transforms. Calling `model.train()` also switches
-BatchNorm modules into training mode, so reapply the chosen evaluation-mode
+Both variants use the approved input-size, normalisation and augmentation
+policy described below. Changes require a separate documented experiment. Calling
+`model.train()` also switches BatchNorm modules into training mode, so reapply the chosen evaluation-mode
 settings after that call. Freezing parameter gradients alone does not freeze
 BatchNorm running statistics.
 
@@ -165,8 +168,37 @@ Both variants now share 224 x 224 aspect-preserving resize/padding and ImageNet
 normalisation. Training additionally uses horizontal flips (probability 0.5) and
 expanded rotations up to 10 degrees, followed by resize/padding again. Validation
 and test have no random augmentation. The full policy is checked in checkpoints.
-Roles 5 and 6 should use the common optimiser/checkpoint helpers and load the
-selected same-context checkpoint before exporting predictions.
+The frozen experiment uses the common optimiser/checkpoint helpers and loads
+the selected same-context checkpoint before exporting predictions. Role 6 must
+use the same helpers and start from that seed's `best.pt`, with a new optimiser
+and independent validation selection. Diagnostic checkpoints are rejected.
+
+## Frozen experiment and evaluation commands
+
+Use `.venv-cnn` from the repository root. Substitute the original image directory
+for `/path/to/Dhan-Shomadhan`:
+
+```bash
+python -m resnet18.train_frozen --dataset /path/to/Dhan-Shomadhan --validation-only
+python -m resnet18.train_frozen --dataset /path/to/Dhan-Shomadhan --evaluate-only
+python -m pip install -r evaluation/requirements.txt
+python -m evaluation.role4_evaluation \
+  --svm /path/to/Dhan-Shomadhan/experiments/baseline \
+  --frozen /path/to/Dhan-Shomadhan/experiments/frozen_resnet18 \
+  --finetuned /path/to/Dhan-Shomadhan/experiments/finetuned_resnet18 \
+  --out /path/to/Dhan-Shomadhan/experiments/comparison
+```
+
+The first command trains all five frozen runs without test evaluation. The
+second exports test predictions from those selected checkpoints. Run it only
+once the training procedure is fixed. The comparison command requires all five
+runs of each supplied method. Omit a pending method until it is ready; the
+output will record that the three-method comparison is incomplete.
+
+Role 4's supplied thumbnail results and PDFs are preserved under
+`evaluation/reference/role4_thumbnail_svm/`. They used thumbnails and fixed SVM
+settings, so they cannot stand in for the final baseline. The integrated evaluator
+has a separate `--thumbnail-reference` mode to check them.
 
 ## Rules for the comparison
 

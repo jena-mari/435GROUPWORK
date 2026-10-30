@@ -1,0 +1,25 @@
+{
+  "checked_on": "2026-10-30",
+  "scope": "preliminary_thumbnail_svm_only",
+  "all_five_test_manifests_matched": true,
+  "test_appearances": 824,
+  "unique_test_images": 457,
+  "supplied_per_run_metrics_match": true,
+  "supplied_summary_mean_sample_std_match": true,
+  "supplied_confusion_matrices_match": true,
+  "maximum_numeric_tolerance": 1e-12,
+  "recomputation_code_sha256": "d1bcc24c9e48df8c05d40e607c019513409e8c1f596d3e8eb58fcdd23d0fb080",
+  "source_sha256": {
+    "role4_evaluation.py": "6ee00521f1366753a15345e9b6a76e7aadf226e23fed80e860c2654629b6b044",
+    "summary.csv": "adea16dd9593b20b4c5319f5445b85751c614e4c74b1a42608a02328c152f8ea",
+    "Evaluation notes.pdf": "f76f35821ad799969d998a358ff63ff453f963242070e499a026b7cf419b63f7",
+    "run_thumbnail_svm.py": "e97e2288d2ed28d5e4b861c0d91cfa0953362f36f1f9e674f5acf455448ad912",
+    "metrics_by_run.csv": "82c8018e52a849f291b9601d02b08da07495863088a4db8aa6832d1adc7be3e8",
+    "Measured results.pdf": "c0faf5e1884ff6cdafb3c042b74b43c896dffd136bbed03f6d818ae05a751e5e",
+    "confusion_matrix_pooled.png": "1b91db1c7ab4a82915eb74b4e84355ed73ab25b4769de77269a117c6c8bb4d42",
+    "test_predictions.csv": "2f4e3d00b04f83a24d1b38ea93d6eeb45ac5f4b9adba89e5751842c0053d48ca",
+    "confusion_matrices.json": "177579acaeed97230f6e369e5372b54ae7d13873409e80a035076b531a1a605d",
+    "README.txt": "777e1fe51243b26072bc7f8016c07f6da45c2af659235c7b8d921199b03a06c1"
+  },
+  "note": "Checks verify supplied predictions and metric arithmetic, not independent reproduction of the historical model training."
+}
