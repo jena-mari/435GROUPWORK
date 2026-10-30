@@ -1,0 +1,166 @@
+{
+  "background_mapping": {
+    "field": 0,
+    "white": 1
+  },
+  "class_mapping": {
+    "brown_spot": 0,
+    "leaf_scald": 1,
+    "rice_blast": 2,
+    "rice_tungro": 3,
+    "sheath_blight": 4
+  },
+  "code_sha256": "3057707fd44b10b878a0355bc45abbb230463851f272952fc4e20991e71fa3d9",
+  "final_group_comparison": true,
+  "manifest_sha256": {
+    "11": {
+      "test": "a296c3237766d5cb5fd023087c30594efd967bddca3967609dc8d80aff144f8e",
+      "train": "41b1d6ea540e98e59e52b3fec72917f8d986cab4e2ab6a49a3bb92e6e968877e",
+      "validation": "5bb1f81c873532e4c49d8adcf992d8c45a2516c2bcfc5019e0662c1d68f9b273"
+    },
+    "22": {
+      "test": "d270f6aad3da5b63703925534d8f1c91292ff72f219e7d7dcb75af826b47e9bb",
+      "train": "21438624666de1eabd4107067e2145dc4438306cca77859a5e19b958ef55b1d1",
+      "validation": "925500a4710cb82a91c93c4a91f28cdc4b773bb04cd13b2cb4cfd3638c4590ca"
+    },
+    "33": {
+      "test": "d6bc94a4c7c9454919bad8b78af8964c09a4aff229e8322a4d1d2e3e2df41ac8",
+      "train": "03e74e65191a81cb34f00c315b447a500955a78df498251137b82d7af6775662",
+      "validation": "eba5cd8bea4676f23179160f7b349eee5ed267bf90d0ae5aeb590c1aff163c53"
+    },
+    "44": {
+      "test": "59931da59b9f2a2a67121450d7130d6d55f649d211b1a8486995b04fa03a2af3",
+      "train": "4013ac247f56af6df488f25627ed70bfa52b18d13dfdb4237e11659665bcce71",
+      "validation": "ecdaed0899a76ac051b587b613ce790207e9b7c4769881acc5f9d48a83a9f58b"
+    },
+    "55": {
+      "test": "1f15534cbf560e3183fa9231fc87827809d9d0fef86d9b420f967ecf92d14e90",
+      "train": "4d9a53741c4347a77abbdc728872eb54a34b059293998c838258dca25ee39f1e",
+      "validation": "7ec580a51717e8bdb1c5343fd75c5b2c989465098c642e1ec4f67cdd1ee837b1"
+    }
+  },
+  "manifest_version": "conservative_splits/bad260e9eda16df2",
+  "matplotlib": "3.10.7",
+  "metric_units": "fractions",
+  "note": "Repeated holdouts overlap. Pooled matrices count test appearances, not unique images. No significance test is performed.",
+  "numpy": "2.3.5",
+  "plots": true,
+  "python": "3.12.14",
+  "scope": "full_resolution_comparison",
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "sklearn": "1.7.2",
+  "sources": [
+    {
+      "config_sha256": "dfde2ff480f1e5d8de84e19deab7cc40c915acd346d72e826a49b4efd5f9c722",
+      "method": "baseline",
+      "predictions_sha256": "56263a75415840754315c5db6b259cf290a05dcb9fcb0a0f7bf650a9d930edf6",
+      "seed": 11,
+      "source": "results/baseline/seed_11"
+    },
+    {
+      "config_sha256": "1520f88898de4942614969d81175928844f5d217668a017a31f74034adc5bca8",
+      "method": "baseline",
+      "predictions_sha256": "69f698cd7f67191440659aee8dc7ef806a03a9ae34ea9fa28d5bdf126f41d157",
+      "seed": 22,
+      "source": "results/baseline/seed_22"
+    },
+    {
+      "config_sha256": "1d453313a1cb964d275b9a7c3a0898543c6857f055682592dbd0f36af9b0086a",
+      "method": "baseline",
+      "predictions_sha256": "8313e9b41bc0d2879f3132c194a314fd481ae7677885a358d7a273643dc256d9",
+      "seed": 33,
+      "source": "results/baseline/seed_33"
+    },
+    {
+      "config_sha256": "f50d7a7581f4567bc36dce98a39aa499cd6b2ce39db18a6bc38bf0d15eb4a350",
+      "method": "baseline",
+      "predictions_sha256": "5f7cd70551bf7a90b6b208cb95e6ff95c5b4f56116fda7592437bd14a9cd680f",
+      "seed": 44,
+      "source": "results/baseline/seed_44"
+    },
+    {
+      "config_sha256": "5fa0a00f49423afd67793204a7e07b999cad98961d08c9c7c2fef8ea9526f336",
+      "method": "baseline",
+      "predictions_sha256": "0a9172aacd985457c91ea1274bd7842f3fc35294c9a180bc18d53680f7935833",
+      "seed": 55,
+      "source": "results/baseline/seed_55"
+    },
+    {
+      "config_sha256": "b1f6e712acd0a2bdd5374b68aceef92a7dd9eed4c0e160a88a2d4042f378b140",
+      "method": "frozen_resnet18",
+      "predictions_sha256": "27d1a8d9c269117f99cb149aaebeed96ad685ec3738425cd5b0c2ee0ff409031",
+      "seed": 11,
+      "source": "results/frozen_resnet18/seed_11"
+    },
+    {
+      "config_sha256": "a0f927ec0cc0a064fb1e2626f94937ace104abe12b48f864093dd20b3321ad9a",
+      "method": "frozen_resnet18",
+      "predictions_sha256": "f446e50fe065f4798ac8f1ae61ff494e629172a41c04c92df7ff216e48490368",
+      "seed": 22,
+      "source": "results/frozen_resnet18/seed_22"
+    },
+    {
+      "config_sha256": "4bc4cd0777cc5bfd419c87ec82f6040651a33233866268647626d831921ff659",
+      "method": "frozen_resnet18",
+      "predictions_sha256": "e3f5ca202e3573480e1371fe5ea3d349ec10fb66551b4650f77b572e13e25132",
+      "seed": 33,
+      "source": "results/frozen_resnet18/seed_33"
+    },
+    {
+      "config_sha256": "c9bf775a7deda9d8a5d25eb59fb8d7e1d2f57841c1e759b5050860bb34190fc3",
+      "method": "frozen_resnet18",
+      "predictions_sha256": "7c8e40087ccad14885d9ac6a1a5856b83b74ff28a946a53ffe19de78973ca6fb",
+      "seed": 44,
+      "source": "results/frozen_resnet18/seed_44"
+    },
+    {
+      "config_sha256": "dce7b01d4b69b5779e815aebf5e70fa333f1508a61e58995f7b9b84f7830b2aa",
+      "method": "frozen_resnet18",
+      "predictions_sha256": "86a6476d5dae2fb2f65df7c6783f37b656c4edee5a7342c97fae26b1992f380a",
+      "seed": 55,
+      "source": "results/frozen_resnet18/seed_55"
+    },
+    {
+      "config_sha256": "4f1fb3d02bfd70f8fac68298e8b4d8b08048877842e7dce422f2d1483ea3ac04",
+      "method": "finetuned_resnet18",
+      "predictions_sha256": "0aea343dda54963faec3315e2160fc349f84e345f1faffccc7cab6edded62384",
+      "seed": 11,
+      "source": "results/finetuned_resnet18/seed_11"
+    },
+    {
+      "config_sha256": "d8d18432bd6f5f32904ac4c289da0ecfe6312c3d2fefca572dc7f8f33abb3ca2",
+      "method": "finetuned_resnet18",
+      "predictions_sha256": "7fbffcd5ccac63dfe6ddfb2f33e2838005703e084490afddd71ab74d44b71e07",
+      "seed": 22,
+      "source": "results/finetuned_resnet18/seed_22"
+    },
+    {
+      "config_sha256": "2d1ee0d3ac4c673987a67d4df73ac331515a9004fdd456d2185474ba72fa0a50",
+      "method": "finetuned_resnet18",
+      "predictions_sha256": "44004a2f6cbcf020a1a51efd6c3b2113a90990b093731168b26058f113a42496",
+      "seed": 33,
+      "source": "results/finetuned_resnet18/seed_33"
+    },
+    {
+      "config_sha256": "cb906fcc237572d0a7f3133f5e0f485e21cee4be73e78f3ab1a6d12d7a44679e",
+      "method": "finetuned_resnet18",
+      "predictions_sha256": "dfb474ba6f721eed5089f9729f206e1302f48efaa4c8403df20dbcfaf302e4e6",
+      "seed": 44,
+      "source": "results/finetuned_resnet18/seed_44"
+    },
+    {
+      "config_sha256": "92aaa6321908718023b89c3ca643d85a357a4a9de866394742e82eef36c19c18",
+      "method": "finetuned_resnet18",
+      "predictions_sha256": "139d4f71f1d7f8f0fb29eb26b3a543a1ab1158f05f964c280c816060e4a5aa08",
+      "seed": 55,
+      "source": "results/finetuned_resnet18/seed_55"
+    }
+  ],
+  "std_ddof": 1
+}

@@ -1,0 +1,51 @@
+{
+  "context": {
+    "background_mapping": {
+      "field": 0,
+      "white": 1
+    },
+    "class_mapping": {
+      "brown_spot": 0,
+      "leaf_scald": 1,
+      "rice_blast": 2,
+      "rice_tungro": 3,
+      "sheath_blight": 4
+    },
+    "manifest_sha256": {
+      "test": "a296c3237766d5cb5fd023087c30594efd967bddca3967609dc8d80aff144f8e",
+      "train": "41b1d6ea540e98e59e52b3fec72917f8d986cab4e2ab6a49a3bb92e6e968877e",
+      "validation": "5bb1f81c873532e4c49d8adcf992d8c45a2516c2bcfc5019e0662c1d68f9b273"
+    },
+    "manifest_version": "conservative_splits/bad260e9eda16df2",
+    "policy": {
+      "color_jitter": false,
+      "evaluation_order": "letterbox, tensor, normalise",
+      "fill": [
+        124,
+        116,
+        104
+      ],
+      "horizontal_flip_probability": 0.5,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "resize": "bilinear aspect-ratio-preserving letterbox",
+      "rotation_degrees": 10.0,
+      "size": 224,
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "training_order": "letterbox, horizontal flip, expanded rotation, letterbox, tensor, normalise"
+    },
+    "run_scope": "experiment",
+    "seed": 11
+  },
+  "images": 164,
+  "partition": "validation",
+  "stage": "finetuned",
+  "weights_source": "IMAGENET1K_V1"
+}

@@ -1,9 +1,9 @@
 # Role 5 and Role 6 integration checks
 
-The common code and integrated Role 5 frozen loop have passed unit and small
-real-image checks. Follow [the frozen guide](ROLE5_FROZEN_EXPERIMENTS.md) for its
-commands. The Role 6 full experiment driver has not yet been supplied. Use this
-checklist when integrating that loop before the final five-run test evaluation.
+The common code and both integrated experiment loops have passed unit and small
+real-image checks. Follow [the frozen guide](ROLE5_FROZEN_EXPERIMENTS.md) and
+the matching `train_finetuned.py` command when starting another run. The
+completed compact outputs are in `../results/`.
 
 ## Role 5: frozen model
 

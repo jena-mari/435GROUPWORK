@@ -1,297 +1,111 @@
-# CSCI435 group project: rice leaf disease classification
+# Rice leaf disease classification
 
-This repository holds the shared data preparation for our rice disease
-classification project. It includes the image inventory, inspection figures,
-review decisions, Python loader and five saved train/validation/test splits.
-The original images are downloaded separately. The SVM baseline is available in
-`hsv_lbp_svm/`. Shared ResNet-18 components and implementation checks are
-available in `resnet18/`, including the integrated frozen-model experiment.
-The evaluation package is in `evaluation/`. The fine-tuned experiment driver and
-final three-method comparison results are still pending.
+This repository contains the shared data preparation, an HSV–LBP–SVM baseline,
+two ResNet-18 experiments and the evaluation files for the CSCI435 project.
+The source images are downloaded separately because the archive is about 1.8 GB.
 
-Start with the setup steps below, then read the
-[group handover](GROUP_HANDOVER.md). It explains the work for each method, the
-files to return, how to compare results, and what the data can support in later
-experiments.
+## Start here
 
-## Where each part belongs
-
-| Area | Code and instructions | Data, results and images |
-|---|---|---|
-| Shared preprocessing | [data_preprocessing/](data_preprocessing/README.md) | `Dhan-Shomadhan/preprocessing/`: audit records, shared manifests, thumbnails and inspection figures |
-| HSV–LBP–SVM | [hsv_lbp_svm/](hsv_lbp_svm/README.md) | `Dhan-Shomadhan/svm_cache/` and `Dhan-Shomadhan/experiments/baseline/`; future SVM figures under the experiment's `figures/` folder |
-| ResNet-18 | [resnet18/](resnet18/README.md), [frozen experiment](resnet18/ROLE5_FROZEN_EXPERIMENTS.md) | CNN run and figure folders: `Dhan-Shomadhan/experiments/frozen_resnet18/` and `finetuned_resnet18/` |
-| Evaluation/comparison | [evaluation/](evaluation/README.md) | `experiments/comparison/`; supplied thumbnail results under `evaluation/reference/` |
-
-```text
-435GROUPWORK/
-├── data_preprocessing/       # shared audit, loader, split and figure generators
-├── hsv_lbp_svm/              # baseline implementation, requirements and tests
-├── resnet18/                 # shared CNN components, frozen experiment and checks
-├── evaluation/               # comparative metrics, figures and preliminary reference
-├── Dhan-Shomadhan/
-│   ├── README.md            # dataset and output map
-│   ├── Field Background  /  # original images, downloaded locally
-│   ├── White Background /   # original images, downloaded locally
-│   ├── preprocessing/
-│   │   ├── figures/         # sample images, candidate-pair and contact sheets
-│   │   ├── thumbnails/      # inspection previews, not training images
-│   │   ├── conservative_splits/  # shared versioned train/validation/test CSVs
-│   │   └── ...              # audit CSV/JSON files and review HTML
-│   ├── svm_cache/           # local fixed-feature cache
-│   └── experiments/         # local per-method training/evaluation outputs
-└── GROUP_HANDOVER.md         # next steps and common result format
-```
-
-The source-image paths, class IDs and all 15 shared manifests are unchanged.
-Use the same fixed partitions for SVM and both CNN variants.
-The small root-level SVM entry points remain for older commands; the maintained
-implementation and requirements are in `hsv_lbp_svm/`.
-
-## Get the dataset
-
-1. Clone this repository and enter its directory:
+1. Clone the repository and download version 1 of Dhan-Shomadhan from the
+   [Mendeley Data record](https://data.mendeley.com/datasets/znsxdctwtt/1).
+2. Extract the archive so the original folders remain under `Dhan-Shomadhan/`.
+3. Run the audit check:
 
    ```bash
-   git clone https://github.com/jena-mari/435GROUPWORK.git
-   cd 435GROUPWORK
+   python data_preprocessing/verify_dataset.py \
+     --root /path/to/Dhan-Shomadhan \
+     --audit Dhan-Shomadhan/preprocessing
    ```
 
-2. Download **version 1** from the original
-   [Mendeley Data record](https://data.mendeley.com/datasets/znsxdctwtt/1)
-   (DOI: `10.17632/znsxdctwtt.1`). Use the record's **Download All** button.
-   The archive is approximately 1.83 GiB; the 1,106 extracted image files occupy
-   approximately 2.23 GB.
+The audit expects 1,106 readable images, the supplied metadata file and the 15
+saved manifests. Do not rename the source folders; two of them contain trailing
+spaces in the original dataset.
 
-3. Extract the archive into the repository root, merging its `Dhan-Shomadhan`
-   directory with the one already present. Preserve the source folder names and
-   image filenames, including the spaces in background folder names. The expected
-   layout is:
+## Repository map
 
-   ```text
-   435GROUPWORK/
-   ├── data_preprocessing/
-   └── Dhan-Shomadhan/
-       ├── Field Background  /    # two trailing spaces in the source name
-       ├── White Background /    # one trailing space in the source name
-       ├── Dhan-Shomadhan_picture_Information.csv
-       └── preprocessing/        # already included in Git
-   ```
+| Folder | Purpose |
+|---|---|
+| `data_preprocessing/` | Audit, loader, duplicate review and shared splits |
+| `hsv_lbp_svm/` | Full-resolution HSV–LBP–SVM baseline |
+| `resnet18/` | Shared CNN code, frozen and fine-tuned drivers, checks |
+| `evaluation/` | Manifest checks and cross-method comparison |
+| `results/` | Compact outputs from the completed five-run experiments |
+| `Dhan-Shomadhan/preprocessing/` | Versioned audit records and manifests |
 
-   Avoid introducing a second nested `Dhan-Shomadhan/Dhan-Shomadhan` directory.
-   The committed manifests preserve the original paths. If your extraction tool
-   strips trailing spaces, use an environment that preserves the source paths
-   (for example macOS, Linux or a Linux filesystem inside WSL).
+The raw images, model checkpoints, feature caches and local environments are
+ignored by Git. The committed prediction files in `results/` are enough to
+reproduce the reported tables and inspect errors by image ID.
 
-4. Verify the downloaded images against the audited SHA-256 inventory:
+## Shared split and input policy
 
-   ```bash
-   python data_preprocessing/verify_dataset.py
-   ```
+All methods use `conservative_splits/bad2609eeda16df2` with seeds 11, 22, 33,
+44 and 55. The targets are 70% training, 15% validation and 15% testing; group
+constraints cause small count differences between runs. Related-image groups
+never cross a partition within a run.
 
-   This check uses only Python's standard library. It verifies every expected
-   image's exact bytes, the source metadata and all 15 saved manifest checksums.
-   It exits unsuccessfully if files are missing or different. All group members
-   should verify the same dataset before training.
+The CNNs use 224×224 aspect-preserving padding, ImageNet normalisation, and
+training-only horizontal flips plus rotations up to ±10°. The SVM uses its own
+256×256 resize, Gaussian blur and HSV/LBP features. Background is evaluation
+metadata, not a model input.
 
-## Install and test the preprocessing code
+## Completed experiments
 
-Use Python 3.12:
+The results below are from the full 1,106-image dataset. Values are mean ± sample
+standard deviation over the five shared holdouts. Accuracy and macro-F1 are
+percentages.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r data_preprocessing/requirements.txt
-python -m unittest discover -s data_preprocessing -p 'test_prepare_dataset.py' -v
-```
+| Method | Test subset | Accuracy | Macro-F1 |
+|---|---|---:|---:|
+| HSV–LBP–SVM | White | 54.88 ± 3.59 | 51.24 ± 1.72 |
+| HSV–LBP–SVM | Field | 51.60 ± 4.56 | 51.33 ± 5.37 |
+| HSV–LBP–SVM | Combined | 53.88 ± 3.42 | 52.17 ± 2.59 |
+| Frozen ResNet-18 | White | 50.52 ± 8.04 | 43.13 ± 6.24 |
+| Frozen ResNet-18 | Field | 41.20 ± 9.23 | 38.75 ± 9.00 |
+| Frozen ResNet-18 | Combined | 47.69 ± 8.11 | 43.08 ± 7.41 |
+| Fine-tuned ResNet-18 | White | 54.70 ± 1.42 | 50.36 ± 3.34 |
+| Fine-tuned ResNet-18 | Field | 46.00 ± 5.83 | 43.68 ± 5.38 |
+| Fine-tuned ResNet-18 | Combined | 52.06 ± 2.31 | 49.35 ± 2.20 |
 
-On Windows, activate the environment with `.venv\Scripts\activate`.
-Model training additionally needs the team's chosen PyTorch/torchvision environment.
+The SVM used its full validation grid. To keep the CNN runs practical on the
+available machine, the frozen runs used an 8-epoch cap and the fine-tuned runs
+used a 4-epoch additional-training cap. Both caps are within the planned limits
+of 30 and 20 epochs, respectively, and are recorded in each run configuration.
 
-## Run the SVM baseline
+Open `results/comparison/five_run_summary.csv` for the unrounded values. The
+three pooled confusion matrices are in `results/comparison/figures/`; pooled
+counts include repeated test appearances because the holdouts overlap.
 
-Follow [the HSV–LBP–SVM guide](hsv_lbp_svm/README.md) to install its dependencies in a separate
-Python 3.12 environment. Start with a training/validation run:
+## Run the code
 
-```bash
-python -m hsv_lbp_svm.svm_baseline --seeds 11 --validation-only
-```
-
-Once the baseline settings are fixed, `python -m hsv_lbp_svm.svm_baseline` runs all five
-shared splits and saves test predictions, metrics and the selected model for each
-seed. The script uses the group's HSV/LBP features and SVM grid search. It reads
-the shared manifests directly; no temporary image splits are needed.
-
-## Check the shared CNN implementation
-
-[resnet18/](resnet18/README.md) supplies pretrained loading, the agreed 224 x 224
-resize/padding and augmentation policy, model/optimiser guards, checkpoints and
-prediction export for Roles 5 and 6. Use its separate `.venv-cnn` environment:
+Use Python 3.12 and separate environments for the SVM and CNNs:
 
 ```bash
-source .venv-cnn/bin/activate
-python -m pip install -r resnet18/requirements.txt
+python -m unittest discover -s data_preprocessing -p 'test_*.py' -v
+python -m unittest discover -s hsv_lbp_svm/tests -p 'test_*.py' -v
 python -m unittest discover -s resnet18/tests -p 'test_*.py' -v
-python -m resnet18.validate_implementation --dataset /path/to/Dhan-Shomadhan
+python -m unittest discover -s evaluation/tests -v
 ```
 
-Create that Python 3.12 environment first if it does not exist. The small checker
-uses training/validation images only. Its checkpoints are marked as diagnostic
-and cannot be substituted for full-experiment checkpoints. Follow the
-[role integration checklist](resnet18/ROLE_VALIDATION.md) before final training.
-The supplied SharedCNNComponents package has also been reconciled with this
-implementation. Its [handover and API mapping](resnet18/SHARED_COMPONENTS_INTEGRATION.md)
-explain `python -m resnet18.check_cnn download-weights`, `preview`, `check` and
-`smoke`. The preview shows the approved transforms using training images only.
+The SVM command is documented in `hsv_lbp_svm/README.md`. For the CNNs, start
+with `python -m resnet18.check_cnn check --dataset /path/to/Dhan-Shomadhan`, then
+read `resnet18/ROLE5_FROZEN_EXPERIMENTS.md` and
+`resnet18/SHARED_COMPONENTS_INTEGRATION.md`.
 
-The [recorded MPS check](resnet18/validation_reports/common_seed11_mps.json) is
-implementation evidence, not a five-run performance result.
-
-## Run the frozen experiment and compare results
-
-The [frozen experiment guide](resnet18/ROLE5_FROZEN_EXPERIMENTS.md) explains
-small checks, five-seed training and test export. Start with:
+To recompute the comparison from saved predictions:
 
 ```bash
-python -m resnet18.train_frozen --dataset /path/to/Dhan-Shomadhan \
-  --seeds 11 --smoke --epochs 1 --batch-size 4
+python -m evaluation.role4_evaluation \
+  --svm results/baseline \
+  --frozen results/frozen_resnet18 \
+  --finetuned results/finetuned_resnet18 \
+  --out /tmp/rice-comparison
 ```
 
-For all five full-data runs, use `--validation-only` without `--smoke`, then
-`--evaluate-only` after the procedure is fixed. Selected checkpoints are saved
-as `experiments/frozen_resnet18/seed_<seed>/best.pt` for the fine-tuned model.
-Existing run directories are preserved. The [evaluation guide](evaluation/README.md)
-shows how to compare the three methods' saved predictions and generate per-run,
-five-run and per-class metrics and confusion matrices. Every supplied method
-must have all five seeds and match the shared test manifests.
+## Attribution and limits
 
-The supplied Role 4 thumbnail-SVM experiment is preserved under
-`evaluation/reference/role4_thumbnail_svm/`. It is preliminary evidence and must
-remain separate from the full-resolution SVM and CNN results.
-
-## Use the shared splits
-
-The current version is recorded in
-[`CURRENT_SPLIT_VERSION.txt`](Dhan-Shomadhan/preprocessing/CURRENT_SPLIT_VERSION.txt).
-It contains one directory for each seed: **11, 22, 33, 44, 55**, with `train.csv`,
-`validation.csv` and `test.csv` files. These are repeated random holdouts targeting
-70/15/15, not five-fold cross-validation. All three methods must use the same
-saved version.
-
-```python
-from pathlib import Path
-from data_preprocessing.prepare_dataset import RiceDataset
-
-root = Path('Dhan-Shomadhan')
-audit = root / 'preprocessing'
-version = audit / (audit / 'CURRENT_SPLIT_VERSION.txt').read_text().strip()
-training = RiceDataset(root, version / 'seed_11/train.csv')
-sample = training[0]
-# sample: image (RGB PIL), disease_id, background_id, image_id
-```
-
-Supply model-specific transforms through the loader's `transform=` argument.
-For a PyTorch batch, use a transform returning fixed-size tensors. Apply random
-augmentation only to training images; fit any learned preprocessing only on the
-corresponding training partition. Background is evaluation metadata.
-
-## Audit findings and grouping policy
-
-| Disease | Field | White | Total |
-|---|---:|---:|---:|
-| Brown Spot | 49 | 90 | 139 |
-| Leaf Scald | 74 | 143 | 217 |
-| Rice Blast | 74 | 198 | 272 |
-| Rice Tungro | 76 | 119 | 195 |
-| Sheath Blight | 64 | 219 | 283 |
-| **Total** | **337** | **769** | **1,106** |
-
-All images passed decoding. No byte-identical duplicate groups or disagreements
-between supplied metadata and mapped folder labels were found. Folder/CSV
-agreement does not independently establish correct biological labels.
-
-The selected policy keeps unresolved perceptual-similarity candidates together.
-There are 1,394 candidate pairs: four visually supported related pairs and 1,390
-unresolved pairs conservatively grouped. All 1,106 images are retained in 613
-groups. This reduces leakage risk through candidate relationships without claiming
-that every candidate is the same leaf. False grouping and missed relationships
-remain possible. The largest group has **461 white-background images** and is
-assigned to training in every run, which limits test coverage.
-
-## Generated images
-
-The images added at the repository root were exact copies of the preprocessing
-figures. The canonical copies are now together under
-[`Dhan-Shomadhan/preprocessing/figures/`](Dhan-Shomadhan/preprocessing/figures/README.md).
-They illustrate the dataset and grouping process; they are not SVM or ResNet
-predictions.
-
-![Dataset examples](Dhan-Shomadhan/preprocessing/figures/samples_raw.png)
-
-*Examples of the five diseases under field and white-background conditions.*
-
-![Candidate-pair sheet](Dhan-Shomadhan/preprocessing/figures/pairs_strong_00.jpg)
-
-*Pairs flagged by perceptual-hash screening. Some are repeated views; others
-remain unresolved. Similarity alone does not confirm shared-leaf identity.*
-
-Rebuild the audit figures from the committed inventory and thumbnails with:
-
-```bash
-python data_preprocessing/make_figures.py
-```
-
-This does not change the shared splits. Future SVM and CNN learning curves,
-confusion matrices or feature visualisations belong with the relevant method's
-experiment outputs, as described in the [dataset map](Dhan-Shomadhan/README.md).
-
-## Inspect the reports
-
-- [Problem Description, preparation approach and algorithm](Dhan-Shomadhan/preprocessing/report_sections.txt)
-- [Raw disease/background counts](Dhan-Shomadhan/preprocessing/counts_raw.csv)
-- [Verification record](Dhan-Shomadhan/preprocessing/VERIFICATION.txt)
-- [Preprocessing code and instructions](data_preprocessing/README.md)
-- [Dataset and output map](Dhan-Shomadhan/README.md)
-- [Figure catalogue and captions](Dhan-Shomadhan/preprocessing/figures/README.md)
-- [ResNet-18 shared components and checks](resnet18/README.md)
-- [Shared CNN package and transformation preview](resnet18/SHARED_COMPONENTS_INTEGRATION.md)
-- [Frozen ResNet-18 experiment](resnet18/ROLE5_FROZEN_EXPERIMENTS.md)
-- [Evaluation and comparative analysis](evaluation/README.md)
-
-Open `Dhan-Shomadhan/preprocessing/dataset_report.html` in a local browser for the
-formatted report, or `review.html` and `gallery_*.html` to inspect the previews.
-GitHub displays HTML source rather than rendering these reports as a website.
-
-## Reproduce the preparation
-
-The committed outputs are ready to use; do not regenerate a different split for
-each model. For an independent rerun, download and verify the source data first,
-then run an audit into a new directory so the saved audit and reviews are preserved:
-
-```bash
-python data_preprocessing/prepare_dataset.py audit --output Dhan-Shomadhan/preprocessing_rerun
-python data_preprocessing/prepare_dataset.py build --output Dhan-Shomadhan/preprocessing_rerun --conservative-pending
-```
-
-All initial candidate edges are grouped by this policy, so the four recorded
-visual confirmations do not change group allocation relative to retaining every
-candidate conservatively. Preserve the committed review files to reproduce their
-full decision history and provenance. The generator prints the saved version path.
-Adopt a replacement version only when the whole team agrees, then update the
-current-version pointer explicitly.
-
-The `.gitignore` rules also exclude new generated directories under the dataset
-by default. Explicitly add a new audit directory only when the team intends to
-share it. Keep submission archives consistent with the assignment's requirements;
-the GitHub repository is the collaboration workspace.
-
-## Dataset attribution
-
-The original dataset and its preview derivatives are attributed to Md Fahad
-Hossain, Sheikh Abujar, Sheak Rashed Haider Noori and Syed Akhter Hossain (2021),
-“Dhan-Shomadhan: A Dataset of Rice Leaf Disease Classification for Bangladeshi
-Local Rice,” Mendeley Data, V1, DOI: `10.17632/znsxdctwtt.1`.
-The dataset record identifies the licence as
-[Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
-Preview figures resize images and add labels/layout; original source images are
-not included in this repository. No project-wide software licence is assigned here.
+Dhan-Shomadhan is attributed to Hossain et al. (2021), Mendeley Data V1,
+DOI `10.17632/znsxdctwtt.1`, CC BY 4.0. The audit checks file readability,
+labels and duplicates; it does not establish biological diagnosis or independent
+plant-level sampling. The five runs are repeated holdouts, not five-fold
+cross-validation. The results describe this dataset and split design, rather
+than deployment performance on new farms or cameras.

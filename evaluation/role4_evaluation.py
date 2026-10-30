@@ -160,6 +160,15 @@ def plot_matrix(matrix, title, path):
     plt.close(fig)
 
 
+def display_path(path):
+    """Keep saved evaluation records portable when a source is inside this repo."""
+    path = Path(path).resolve()
+    try:
+        return path.relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def evaluate_sources(sources, audit, output, *, thumbnail_reference=None, plots=True):
     output = Path(output)
     if output.exists():
@@ -177,7 +186,7 @@ def evaluate_sources(sources, audit, output, *, thumbnail_reference=None, plots=
         for seed in SEEDS:
             collected[(method, seed)] = normalise_predictions(
                 [r for r in raw if int(r['seed']) == seed], manifests[seed], seed, method, reference=True)
-        records.append(dict(method=method, predictions_sha256=sha_file(source), source=str(source.resolve())))
+        records.append(dict(method=method, predictions_sha256=sha_file(source), source=display_path(source)))
     else:
         for method, root in sources.items():
             for seed in SEEDS:
@@ -189,7 +198,7 @@ def evaluate_sources(sources, audit, output, *, thumbnail_reference=None, plots=
                     policies.append(config['context']['policy'])
                 collected[(method, seed)] = normalise_predictions(
                     read_csv(prediction_path), manifests[seed], seed, method)
-                records.append(dict(method=method, seed=seed, source=str(directory.resolve()),
+                records.append(dict(method=method, seed=seed, source=display_path(directory),
                     predictions_sha256=sha_file(prediction_path), config_sha256=sha_file(config_path)))
         if policies and any(policy != policies[0] for policy in policies):
             raise ValueError('CNN runs used different preprocessing/augmentation policies')

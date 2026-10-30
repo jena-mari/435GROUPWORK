@@ -1,0 +1,50 @@
+{
+  "checkpoint_sha256": "b2e00d015ef279a7955758015b679bcfc372340793f287e0337e3abebbd9024c",
+  "context": {
+    "background_mapping": {
+      "field": 0,
+      "white": 1
+    },
+    "class_mapping": {
+      "brown_spot": 0,
+      "leaf_scald": 1,
+      "rice_blast": 2,
+      "rice_tungro": 3,
+      "sheath_blight": 4
+    },
+    "manifest_sha256": {
+      "test": "d270f6aad3da5b63703925534d8f1c91292ff72f219e7d7dcb75af826b47e9bb",
+      "train": "21438624666de1eabd4107067e2145dc4438306cca77859a5e19b958ef55b1d1",
+      "validation": "925500a4710cb82a91c93c4a91f28cdc4b773bb04cd13b2cb4cfd3638c4590ca"
+    },
+    "manifest_version": "conservative_splits/bad260e9eda16df2",
+    "policy": {
+      "color_jitter": false,
+      "evaluation_order": "letterbox, tensor, normalise",
+      "fill": [
+        124,
+        116,
+        104
+      ],
+      "horizontal_flip_probability": 0.5,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "resize": "bilinear aspect-ratio-preserving letterbox",
+      "rotation_degrees": 10.0,
+      "size": 224,
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "training_order": "letterbox, horizontal flip, expanded rotation, letterbox, tensor, normalise"
+    },
+    "run_scope": "experiment",
+    "seed": 22
+  },
+  "evaluation_device": "mps",
+  "images": 164
+}

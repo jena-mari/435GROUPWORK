@@ -1,0 +1,145 @@
+{
+  "actual_batch_size": 32,
+  "actual_max_epochs": 4,
+  "actual_patience": 5,
+  "audit_directory": "Dhan-Shomadhan/preprocessing",
+  "best_epoch": 3,
+  "best_validation_macro_f1": 0.4903172941350281,
+  "checkpoint": "best.pt",
+  "checkpoint_sha256": "d1735247c1e26125da10dc27b5beb66a7668f21e38e1755298d38f9fd0e6eaaa",
+  "common_code_sha256": "d79c100d32aebc511374e1ddd3dd78e42d9405d34052cfbc807aae8e5d8eef0e",
+  "context": {
+    "background_mapping": {
+      "field": 0,
+      "white": 1
+    },
+    "class_mapping": {
+      "brown_spot": 0,
+      "leaf_scald": 1,
+      "rice_blast": 2,
+      "rice_tungro": 3,
+      "sheath_blight": 4
+    },
+    "manifest_sha256": {
+      "test": "a296c3237766d5cb5fd023087c30594efd967bddca3967609dc8d80aff144f8e",
+      "train": "41b1d6ea540e98e59e52b3fec72917f8d986cab4e2ab6a49a3bb92e6e968877e",
+      "validation": "5bb1f81c873532e4c49d8adcf992d8c45a2516c2bcfc5019e0662c1d68f9b273"
+    },
+    "manifest_version": "conservative_splits/bad260e9eda16df2",
+    "policy": {
+      "color_jitter": false,
+      "evaluation_order": "letterbox, tensor, normalise",
+      "fill": [
+        124,
+        116,
+        104
+      ],
+      "horizontal_flip_probability": 0.5,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "resize": "bilinear aspect-ratio-preserving letterbox",
+      "rotation_degrees": 10.0,
+      "size": 224,
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "training_order": "letterbox, horizontal flip, expanded rotation, letterbox, tensor, normalise"
+    },
+    "run_scope": "experiment",
+    "seed": 11
+  },
+  "dataset_root": "Dhan-Shomadhan",
+  "device": "mps",
+  "driver_code_sha256": "cad23335f1139fa192155a51aef293bf680ba88f9c20132ad64d396380003808",
+  "elapsed_training_seconds": 241.66937408299418,
+  "epochs_completed": 4,
+  "frozen_checkpoint": "Dhan-Shomadhan/experiments/frozen_resnet18_8ep/seed_11/best.pt",
+  "frozen_checkpoint_epoch": 8,
+  "frozen_checkpoint_sha256": "24dc9abd94f9a8535f1e06f2748193c5ce2fd7d69ff552baad3b390339d05777",
+  "frozen_source_epoch": 8,
+  "frozen_source_sha256": "24dc9abd94f9a8535f1e06f2748193c5ce2fd7d69ff552baad3b390339d05777",
+  "method": "finetuned_resnet18",
+  "numpy": "2.3.5",
+  "optimizer": "Adam",
+  "optimizer_groups": [
+    {
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "lr": 1e-05,
+      "parameter_names": [
+        "layer4.0.conv1.weight",
+        "layer4.0.bn1.weight",
+        "layer4.0.bn1.bias",
+        "layer4.0.conv2.weight",
+        "layer4.0.bn2.weight",
+        "layer4.0.bn2.bias",
+        "layer4.0.downsample.0.weight",
+        "layer4.0.downsample.1.weight",
+        "layer4.0.downsample.1.bias",
+        "layer4.1.conv1.weight",
+        "layer4.1.bn1.weight",
+        "layer4.1.bn1.bias",
+        "layer4.1.conv2.weight",
+        "layer4.1.bn2.weight",
+        "layer4.1.bn2.bias"
+      ],
+      "weight_decay": 0.0
+    },
+    {
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "lr": 0.0001,
+      "parameter_names": [
+        "fc.weight",
+        "fc.bias"
+      ],
+      "weight_decay": 0.0
+    }
+  ],
+  "pillow": "12.3.0",
+  "planned_defaults": {
+    "batch_size": 32,
+    "max_epochs": 20,
+    "patience": 5
+  },
+  "python": "3.12.14",
+  "selection_rule": "strictly highest validation macro-F1; ties count as no improvement",
+  "stage": "finetuned",
+  "torch": "2.14.1",
+  "torchvision": "0.29.1",
+  "trainable_names": [
+    "layer4.0.conv1.weight",
+    "layer4.0.bn1.weight",
+    "layer4.0.bn1.bias",
+    "layer4.0.conv2.weight",
+    "layer4.0.bn2.weight",
+    "layer4.0.bn2.bias",
+    "layer4.0.downsample.0.weight",
+    "layer4.0.downsample.1.weight",
+    "layer4.0.downsample.1.bias",
+    "layer4.1.conv1.weight",
+    "layer4.1.bn1.weight",
+    "layer4.1.bn1.bias",
+    "layer4.1.conv2.weight",
+    "layer4.1.bn2.weight",
+    "layer4.1.bn2.bias",
+    "fc.weight",
+    "fc.bias"
+  ],
+  "trainable_parameters": 8396293,
+  "training_complete": true,
+  "validation_only": true,
+  "weights_source": "IMAGENET1K_V1",
+  "workers": 4
+}

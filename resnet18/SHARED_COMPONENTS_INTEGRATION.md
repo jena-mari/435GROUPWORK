@@ -3,8 +3,8 @@
 The supplied `SharedCNNComponents` package has been reconciled with the current
 `resnet18/` implementation. Both CNN variants use one active `common.py`, the
 same approved image policy and the same versioned manifests. The frozen
-experiment remains in `train_frozen.py`; Role 6's full experiment driver is still
-pending.
+experiment remains in `train_frozen.py`; the matching fine-tuned driver is
+`train_finetuned.py`.
 
 ## Commands for group members
 
@@ -94,4 +94,4 @@ The [original package snapshot](reference/shared_cnn_components/README.md) keeps
 all supplied files byte-for-byte as reference text, with a source manifest. It is
 not a second importable implementation or a replacement requirements file.
 The [validation record](validation_reports/shared_components_seed11_mps.json)
-documents the integrated checks. No full five-run CNN results are claimed.
+documents the integrated checks. Full five-run CNN outputs are in `../results/`.

@@ -1,11 +1,9 @@
 # Common CNN setup
 
 These components implement the shared parts of the two ResNet experiments.
-Role 5's supplied frozen loop is integrated in `train_frozen.py`; see the
-[frozen experiment guide](ROLE5_FROZEN_EXPERIMENTS.md). Role 6 owns the pending
-fine-tuned experiment driver.
-The common checks do not replace review of those loops or the final five-run
-evaluation.
+Role 5's supplied frozen loop is integrated in `train_frozen.py`; the matching
+fine-tuned driver is `train_finetuned.py`. The compact outputs are in
+`../results/`. The common checks remain useful when starting a new run.
 
 ## Environment and weights
 
@@ -80,8 +78,9 @@ fine-tuning.
 
 The optimiser is Adam with betas `(0.9,0.999)`, epsilon `1e-8` and weight decay
 zero. Frozen head LR is `1e-3`; fine-tuning uses `1e-5` for `layer4` and `1e-4`
-for the head. Planned full runs use batch size 32, at most 30 frozen epochs and
-20 additional fine-tuning epochs. Validation macro-F1 selects checkpoints; five
+for the head. The completed runs used batch size 32, an 8-epoch frozen cap and a
+4-epoch fine-tuning cap. The planned maxima were 30 and 20 epochs. Validation
+macro-F1 selects checkpoints; five
 consecutive epochs without a strict improvement trigger stopping. Ties count
 as no improvement. Fine-tuning starts a fresh selector and optimiser.
 

@@ -1,0 +1,83 @@
+{
+  "background_mapping": {
+    "field": 0,
+    "white": 1
+  },
+  "best_validation_macro_f1": 0.5729476964259572,
+  "class_mapping": {
+    "brown_spot": 0,
+    "leaf_scald": 1,
+    "rice_blast": 2,
+    "rice_tungro": 3,
+    "sheath_blight": 4
+  },
+  "class_weight": "balanced",
+  "code_sha256": "7c3d864d8a2680cf4e5d0b0a2feee881e4deb51028dbff6c4bb2d054aacf9f40",
+  "feature_settings": {
+    "code_sha256": "7c3d864d8a2680cf4e5d0b0a2feee881e4deb51028dbff6c4bb2d054aacf9f40",
+    "features": 284,
+    "gaussian_blur": [
+      3,
+      3
+    ],
+    "hsv_bins": [
+      16,
+      4,
+      4
+    ],
+    "image_loading": "shared EXIF-aware RGB loader, converted to BGR for OpenCV",
+    "image_size": 256,
+    "lbp_method": "uniform",
+    "lbp_settings": [
+      [
+        8,
+        1
+      ],
+      [
+        16,
+        2
+      ]
+    ],
+    "versions": {
+      "numpy": "2.2.6",
+      "opencv": "4.12.0",
+      "pillow": "12.3.0",
+      "skimage": "0.25.2"
+    }
+  },
+  "feature_signature": "6eceabe2f59075566941862c7c0537d729a39926f146256d39d20a6665b4170c",
+  "kernel": "rbf",
+  "manifest_sha256": {
+    "test": "d270f6aad3da5b63703925534d8f1c91292ff72f219e7d7dcb75af826b47e9bb",
+    "train": "21438624666de1eabd4107067e2145dc4438306cca77859a5e19b958ef55b1d1",
+    "validation": "925500a4710cb82a91c93c4a91f28cdc4b773bb04cd13b2cb4cfd3638c4590ca"
+  },
+  "manifest_version": "conservative_splits/bad260e9eda16df2",
+  "method": "baseline",
+  "model_file": "selected_model.pkl",
+  "parameter_grid": {
+    "C": [
+      0.1,
+      1,
+      10,
+      100
+    ],
+    "gamma": [
+      "scale",
+      0.001,
+      0.01,
+      0.1
+    ]
+  },
+  "python": "3.12.14",
+  "scaler_fit": "training partition only; selected model is not refit on train+validation",
+  "scipy": "1.16.3",
+  "seed": 22,
+  "selected_parameters": {
+    "C": 10,
+    "gamma": "scale"
+  },
+  "selection_metric": "validation macro-F1",
+  "sklearn": "1.7.2",
+  "validation_only": false
+}

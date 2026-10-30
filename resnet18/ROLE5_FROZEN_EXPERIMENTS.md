@@ -87,4 +87,5 @@ The supplied folder included an alternative common implementation with portrait
 The integrated loop uses the already agreed common implementation instead. This
 keeps both CNN variants on the same input policy and checkpoint format. The
 supplied destructive overwrite option was replaced with fresh output directories.
-No completed frozen-model results were supplied or inferred from this integration.
+The completed compact frozen-model outputs are in `../results/frozen_resnet18/`.
+The corresponding fine-tuned outputs are in `../results/finetuned_resnet18/`.
