@@ -77,6 +77,12 @@ stay identical. The small diagnostic runner performs this check.
 
 ## Shared checks before a full run
 
+The [shared-components handover](SHARED_COMPONENTS_INTEGRATION.md) maps the
+supplied package to the current API. `python -m resnet18.check_cnn preview` shows
+training images under the actual agreed transforms; `check` exercises all split
+allocations and both model stages without test evaluation.
+
+
 - Verify the original image files using `data_preprocessing/verify_dataset.py`.
 - Inspect a loader batch: float images `[B,3,224,224]`, integer disease labels
   0–4 and matching image IDs. Background remains metadata.

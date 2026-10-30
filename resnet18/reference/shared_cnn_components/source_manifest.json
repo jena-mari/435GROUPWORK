@@ -1,0 +1,41 @@
+{
+  "source_package": "SharedCNNComponents",
+  "received_on": "2026-10-30",
+  "files": [
+    {
+      "original_path": "README.md",
+      "saved_path": "README.md.txt",
+      "sha256": "4946a6e4a8dc76496a0ad4c9540b6d76a86cc48824116c17c00b3da70219b441"
+    },
+    {
+      "original_path": "__init__.py",
+      "saved_path": "__init__.py.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_path": "check_cnn.py",
+      "saved_path": "check_cnn.py.txt",
+      "sha256": "caf43ec941cd90d92750f3d3f748d22f56a44d9f9ad1cc18a1c0a0dcf6ee6f53"
+    },
+    {
+      "original_path": "common.py",
+      "saved_path": "common.py.txt",
+      "sha256": "8dbd4b3cec6066239c447289be9861bc74241e6c8a7894038065bc1811bdfbd2"
+    },
+    {
+      "original_path": "requirements.txt",
+      "saved_path": "requirements.txt",
+      "sha256": "c3737eee8aded0b3795fb225e8363c5a23ceee534aa944c5a122ce82bad2ee97"
+    },
+    {
+      "original_path": "tests/__init__.py",
+      "saved_path": "tests/__init__.py.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_path": "tests/test_common.py",
+      "saved_path": "tests/test_common.py.txt",
+      "sha256": "a63ec34fe3f89f5d25ab87f29403ff826dc58756d70d9f1d971f387af711d4d7"
+    }
+  ]
+}

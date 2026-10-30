@@ -10,6 +10,8 @@ The fine-tuned experiment driver and final five-run test results are still pendi
 |---|---|
 | `train_frozen.py` | Frozen experiment using the current shared components |
 | `ROLE5_FROZEN_EXPERIMENTS.md` | Training, validation-only and test-export commands |
+| `check_cnn.py` | Weight download, transform preview and consolidated diagnostics |
+| `SHARED_COMPONENTS_INTEGRATION.md` | Shared-package handover, command guide and API mapping |
 | `common.py` | Shared model, data, training, checkpoint and export helpers |
 | `validate_implementation.py` | Small pretrained training/validation check for both modes |
 | `tests/test_common.py` | Offline unit and integration checks with synthetic images |
@@ -31,6 +33,10 @@ A `.venv-cnn` is already set up in the original checkout. On Windows use
 `py -3.12` and `.venv-cnn\Scripts\activate`. Full instructions are in
 [COMMON_COMPONENTS.md](COMMON_COMPONENTS.md). The diagnostic uses 10 training
 and 10 validation images by default and never evaluates test images.
+
+The supplied SharedCNNComponents package is integrated into this folder. See
+[the shared-components handover](SHARED_COMPONENTS_INTEGRATION.md) for preview,
+weight-download and diagnostic commands, and the API mapping for teammates.
 
 Both variants must read the same `RiceDataset` loader, disease mapping and
 current manifest version used by the HSV–LBP–SVM baseline. The agreed policy is

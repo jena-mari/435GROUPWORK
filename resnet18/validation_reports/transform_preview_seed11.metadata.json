@@ -1,0 +1,104 @@
+{
+  "code_sha256": "ef36d24f789ce83b30f4b679afc3d4e7ad6d0ee6ababa16a67a7ce9a92616c1e",
+  "common_code_sha256": "d79c100d32aebc511374e1ddd3dd78e42d9405d34052cfbc807aae8e5d8eef0e",
+  "context": {
+    "background_mapping": {
+      "field": 0,
+      "white": 1
+    },
+    "class_mapping": {
+      "brown_spot": 0,
+      "leaf_scald": 1,
+      "rice_blast": 2,
+      "rice_tungro": 3,
+      "sheath_blight": 4
+    },
+    "manifest_sha256": {
+      "test": "a296c3237766d5cb5fd023087c30594efd967bddca3967609dc8d80aff144f8e",
+      "train": "41b1d6ea540e98e59e52b3fec72917f8d986cab4e2ab6a49a3bb92e6e968877e",
+      "validation": "5bb1f81c873532e4c49d8adcf992d8c45a2516c2bcfc5019e0662c1d68f9b273"
+    },
+    "manifest_version": "conservative_splits/bad260e9eda16df2",
+    "policy": {
+      "color_jitter": false,
+      "evaluation_order": "letterbox, tensor, normalise",
+      "fill": [
+        124,
+        116,
+        104
+      ],
+      "horizontal_flip_probability": 0.5,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "resize": "bilinear aspect-ratio-preserving letterbox",
+      "rotation_degrees": 10.0,
+      "size": 224,
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "training_order": "letterbox, horizontal flip, expanded rotation, letterbox, tensor, normalise"
+    },
+    "run_scope": "experiment",
+    "seed": 11
+  },
+  "display": "Fixed normalisation is inverted for viewing. The original panel is resized for display only.",
+  "images": [
+    {
+      "background": "field",
+      "disease": "rice_blast",
+      "image_id": "418c7d2786ab03b7298a",
+      "path": "Field Background  /Rice Blast/rbf_52.jpg"
+    },
+    {
+      "background": "field",
+      "disease": "brown_spot",
+      "image_id": "fd7e133c2203b0763cc3",
+      "path": "Field Background  /Browon Spot/bsf_39.jpg"
+    },
+    {
+      "background": "white",
+      "disease": "rice_blast",
+      "image_id": "7b7ee8984c74e093a1bf",
+      "path": "White Background /Rice Blast/rb_wb_116.jpg"
+    },
+    {
+      "background": "white",
+      "disease": "sheath_blight",
+      "image_id": "3a91eb4de835a996aeea",
+      "path": "White Background /Shath Blight/sb_wb_0.jpg"
+    }
+  ],
+  "policy": {
+    "color_jitter": false,
+    "evaluation_order": "letterbox, tensor, normalise",
+    "fill": [
+      124,
+      116,
+      104
+    ],
+    "horizontal_flip_probability": 0.5,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "resize": "bilinear aspect-ratio-preserving letterbox",
+    "rotation_degrees": 10.0,
+    "size": 224,
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "training_order": "letterbox, horizontal flip, expanded rotation, letterbox, tensor, normalise"
+  },
+  "scope": "input_policy_preview",
+  "seed": 11,
+  "source_partition": "train",
+  "test_images_evaluated": 0
+}

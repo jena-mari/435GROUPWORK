@@ -1,0 +1,9 @@
+# ResNet-18 environment (Python 3.12). Install from the repository root:
+#   python -m pip install -r resnet18/requirements.txt
+# Install the PyTorch build for your machine first if you need GPU support (see pytorch.org);
+# the exact torch version used is recorded in every run_config.json.
+torch>=2.4
+numpy==2.3.5
+Pillow==12.3.0
+scikit-learn==1.7.2
+matplotlib>=3.8

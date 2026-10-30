@@ -139,6 +139,11 @@ Create that Python 3.12 environment first if it does not exist. The small checke
 uses training/validation images only. Its checkpoints are marked as diagnostic
 and cannot be substituted for full-experiment checkpoints. Follow the
 [role integration checklist](resnet18/ROLE_VALIDATION.md) before final training.
+The supplied SharedCNNComponents package has also been reconciled with this
+implementation. Its [handover and API mapping](resnet18/SHARED_COMPONENTS_INTEGRATION.md)
+explain `python -m resnet18.check_cnn download-weights`, `preview`, `check` and
+`smoke`. The preview shows the approved transforms using training images only.
+
 The [recorded MPS check](resnet18/validation_reports/common_seed11_mps.json) is
 implementation evidence, not a five-run performance result.
 
@@ -249,6 +254,7 @@ experiment outputs, as described in the [dataset map](Dhan-Shomadhan/README.md).
 - [Dataset and output map](Dhan-Shomadhan/README.md)
 - [Figure catalogue and captions](Dhan-Shomadhan/preprocessing/figures/README.md)
 - [ResNet-18 shared components and checks](resnet18/README.md)
+- [Shared CNN package and transformation preview](resnet18/SHARED_COMPONENTS_INTEGRATION.md)
 - [Frozen ResNet-18 experiment](resnet18/ROLE5_FROZEN_EXPERIMENTS.md)
 - [Evaluation and comparative analysis](evaluation/README.md)
 

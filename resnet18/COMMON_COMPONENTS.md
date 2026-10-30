@@ -136,3 +136,11 @@ diagnostic, not final report results.
 Full experiments remain under `experiments/frozen_resnet18/seed_<seed>/` and
 `experiments/finetuned_resnet18/seed_<seed>/`. See the
 [role checklist](ROLE_VALIDATION.md) before starting them.
+
+## Shared-package commands
+
+`python -m resnet18.check_cnn` adds `download-weights`, `preview`, `check` and
+`smoke` commands using these same components. The
+[shared-components handover](SHARED_COMPONENTS_INTEGRATION.md) explains the
+supplied-package integration and API mapping. The preview illustrates the actual
+approved transforms using training images, without model predictions.

@@ -14,6 +14,10 @@ repository.
 - **HSV–LBP–SVM:** `hsv_lbp_svm/` contains the implementation, requirements,
   tests and method guide. Local results stay under `experiments/baseline/` inside
   the dataset directory.
+- **Shared CNN components (Role 3):** `resnet18/common.py`, `check_cnn.py` and
+  the shared tests provide the agreed inputs, pretrained loading, checkpoint and
+  prediction contracts. Use the [component handover](resnet18/SHARED_COMPONENTS_INTEGRATION.md)
+  for the supplied-package mapping and transformation preview.
 - **ResNet-18:** `resnet18/` contains shared components, unit tests and a small
   implementation-check runner and the integrated Role 5 frozen experiment.
   Role 6 still needs its full experiment driver. Final CNN test results are pending.
