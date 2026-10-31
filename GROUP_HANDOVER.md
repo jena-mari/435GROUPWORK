@@ -4,14 +4,21 @@ The repository now contains the shared data preparation, the full SVM run,
 five frozen ResNet-18 runs, five fine-tuned ResNet-18 runs and their comparison.
 Use the saved predictions in `results/` when writing the report.
 
+The full local outputs used for the report are named
+`experiments/baseline/`, `experiments/frozen_resnet18_8ep/`,
+`experiments/finetuned_resnet18_4ep/` and
+`experiments/comparison_8ep_4ep/` under the downloaded dataset. The compact
+GitHub copies use `results/baseline/`, `results/frozen_resnet18/`,
+`results/finetuned_resnet18/` and `results/comparison/`.
+
 ## Who uses what
 
 | Work | Location | Handover |
 |---|---|---|
 | Dataset audit and splits | `data_preprocessing/`, `Dhan-Shomadhan/preprocessing/` | Keep the current split version unchanged |
 | HSV–LBP–SVM | `hsv_lbp_svm/`, `results/baseline/` | Full validation grid; scaler fitted on training data only |
-| Frozen ResNet-18 | `resnet18/train_frozen.py`, `results/frozen_resnet18/` | ImageNet backbone, head only; 8-epoch actual cap |
-| Fine-tuned ResNet-18 | `resnet18/train_finetuned.py`, `results/finetuned_resnet18/` | Same-seed frozen checkpoint, `layer4` + head; 4 additional epochs |
+| Frozen ResNet-18 | `resnet18/train_frozen.py`, `results/frozen_resnet18/` | ImageNet backbone, head only; official local output is `frozen_resnet18_8ep` |
+| Fine-tuned ResNet-18 | `resnet18/train_finetuned.py`, `results/finetuned_resnet18/` | Same-seed frozen checkpoint, `layer4` + head; official local output is `finetuned_resnet18_4ep` |
 | Evaluation | `evaluation/`, `results/comparison/` | Checks IDs and manifests, then produces tables and matrices |
 
 ## Result files
@@ -56,4 +63,5 @@ python -m evaluation.role4_evaluation \
 
 The compact results in GitHub were generated from the full local dataset. The
 source images and checkpoints must be downloaded or regenerated locally when a
-new experiment is needed.
+new experiment is needed. See [REPRODUCTION.md](REPRODUCTION.md) for the exact
+commands and the distinction between the compact copies and full local runs.

@@ -36,6 +36,13 @@ The raw images, model checkpoints, feature caches and local environments are
 ignored by Git. The committed prediction files in `results/` are enough to
 reproduce the reported tables and inspect errors by image ID.
 
+For clean-checkout installation and exact rerun commands, see
+[REPRODUCTION.md](REPRODUCTION.md). The official local experiment directories
+used for the reported runs are `baseline`, `frozen_resnet18_8ep`,
+`finetuned_resnet18_4ep` and `comparison_8ep_4ep` under the dataset's
+`experiments/` folder. The shorter names under `results/` are compact committed
+copies of those outputs.
+
 ## Shared split and input policy
 
 All methods use `conservative_splits/bad2609eeda16df2` with seeds 11, 22, 33,

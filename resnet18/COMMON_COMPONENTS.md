@@ -132,8 +132,9 @@ per-stage histories, validation predictions/metrics, selected checkpoints and
 full-experiment context or used to export test predictions. Their scores are
 diagnostic, not final report results.
 
-Full experiments remain under `experiments/frozen_resnet18/seed_<seed>/` and
-`experiments/finetuned_resnet18/seed_<seed>/`. See the
+The reported full experiments are under
+`experiments/frozen_resnet18_8ep/seed_<seed>/` and
+`experiments/finetuned_resnet18_4ep/seed_<seed>/`. See the
 [role checklist](ROLE_VALIDATION.md) before starting them.
 
 ## Shared-package commands

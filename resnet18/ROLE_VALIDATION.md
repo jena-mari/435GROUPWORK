@@ -3,7 +3,8 @@
 The common code and both integrated experiment loops have passed unit and small
 real-image checks. Follow [the frozen guide](ROLE5_FROZEN_EXPERIMENTS.md) and
 the matching `train_finetuned.py` command when starting another run. The
-completed compact outputs are in `../results/`.
+completed compact outputs are in `../results/`. The reported full local runs are
+`experiments/frozen_resnet18_8ep/` and `experiments/finetuned_resnet18_4ep/`.
 
 ## Role 5: frozen model
 
