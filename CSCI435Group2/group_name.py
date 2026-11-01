@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Original repository: https://github.com/jena-mari/435GROUPWORK
 """Standalone CSCI435 rice disease experiments (Python 3.12).
 
 Run next to Dhan-Shomadhan/, or supply --dataset explicitly. All extracted
