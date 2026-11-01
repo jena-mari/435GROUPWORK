@@ -1,0 +1,307 @@
+#!/usr/bin/env python3
+"""Standalone CSCI435 rice disease experiments (Python 3.12).
+
+Run next to Dhan-Shomadhan/, or supply --dataset explicitly. All extracted
+code, environments, caches, predictions and figures remain inside that folder.
+Examples: python group_name.py setup; python group_name.py evaluate-reported
+          python group_name.py train; python group_name.py evaluate
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import gzip
+import hashlib
+import json
+import os
+from pathlib import Path
+import runpy
+import subprocess
+import sys
+import tempfile
+import venv
+
+_PAYLOAD = __BUNDLED_PAYLOAD__
+_PAYLOAD_SHA256 = __BUNDLED_SHA256__
+SEEDS = (11, 22, 33, 44, 55)
+COMMANDS = ('setup', 'install', 'prepare', 'verify', 'download-weights', 'check',
+            'preview', 'smoke', 'compare-resize', 'audit', 'train-thumbnail', 'train-svm',
+            'train-frozen', 'train-finetuned', 'train-cnns', 'train',
+            'evaluate', 'evaluate-reported', 'evaluate-thumbnail')
+
+
+def _bundle():
+    data = gzip.decompress(base64.b64decode(_PAYLOAD))
+    if hashlib.sha256(data).hexdigest() != _PAYLOAD_SHA256:
+        raise ValueError('Bundled runtime checksum mismatch')
+    return json.loads(data)
+
+
+def _inside(path, dataset):
+    path = Path(path).resolve()
+    if not path.is_relative_to(dataset):
+        raise ValueError(f'Generated files must stay under {dataset}: {path}')
+    return path
+
+
+def _write_bundle(files, destination, *, immutable):
+    destination.mkdir(parents=True, exist_ok=True)
+    for relative, encoded in files.items():
+        relative = Path(relative)
+        if relative.is_absolute() or '..' in relative.parts:
+            raise ValueError('Invalid bundled path')
+        target = (destination / relative).resolve()
+        if not target.is_relative_to(destination.resolve()):
+            raise ValueError('Bundled path escapes its destination')
+        content = base64.b64decode(encoded)
+        if target.exists():
+            if target.read_bytes() == content:
+                continue
+            if immutable:
+                raise ValueError(f'Existing shared file differs; preserved unchanged: {target}')
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+
+
+def _materialise(dataset, audit):
+    bundle = _bundle()
+    # Content-addressed runtime: loading a newer entry point never alters code
+    # belonging to an earlier checkpoint's recorded source hashes.
+    runtime = _inside(dataset / '.submission_runtime' / _PAYLOAD_SHA256[:16], dataset)
+    _write_bundle(bundle['modules'], runtime, immutable=True)
+    _write_bundle(bundle['audit'], audit, immutable=True)
+    _write_bundle(bundle['recorded'], runtime / 'recorded', immutable=True)
+    _write_bundle(bundle['requirements'], runtime / 'requirements', immutable=True)
+    return runtime
+
+
+def _env_path(environment):
+    return environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+
+
+def _python(kind, args):
+    explicit = getattr(args, kind + '_python')
+    if explicit:
+        candidate = Path(explicit)
+        if not candidate.is_file():
+            raise ValueError(f'Python executable not found: {explicit}')
+        return str(candidate.absolute())
+    candidates = []
+    candidates.append(_env_path(args.dataset / '.submission_envs' / kind))
+    for parent in (Path(__file__).resolve().parent, *Path(__file__).resolve().parents):
+        candidates.append(_env_path(parent / ('.venv-' + kind)))
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate.absolute())  # Do not resolve away the venv symlink.
+    raise ValueError(f'No {kind} environment found. Run: python {Path(__file__).name} install '
+                     f'--dataset "{args.dataset}"; or supply --{kind}-python /path/to/python')
+
+
+def _call(kind, module, argv, args, runtime):
+    python = sys.executable if kind == 'stdlib' else _python(kind, args)
+    env = os.environ.copy()
+    cache = _inside(args.dataset / '.submission_runtime' / 'cache', args.dataset)
+    tmp = _inside(args.dataset / '.submission_runtime' / 'tmp', args.dataset)
+    tmp.mkdir(parents=True, exist_ok=True)
+    cache.mkdir(parents=True, exist_ok=True)
+    env.update(TMPDIR=str(tmp), TMP=str(tmp), TEMP=str(tmp),
+               MPLCONFIGDIR=str(cache / 'matplotlib'), XDG_CACHE_HOME=str(cache),
+               PYTHONPYCACHEPREFIX=str(cache / 'pycache'))
+    # The python.org macOS installer may have no configured CA bundle. Use the
+    # system's trusted bundle when present, while retaining certificate checks.
+    if sys.platform == 'darwin' and Path('/etc/ssl/cert.pem').is_file():
+        env.setdefault('SSL_CERT_FILE', '/etc/ssl/cert.pem')
+    command = [python, str(Path(__file__).resolve()), '_run', str(args.dataset),
+               str(runtime), module, *map(str, argv)]
+    print(f'Running {module} using {python}', flush=True)
+    subprocess.run(command, check=True, cwd=args.dataset.parent, env=env)
+
+
+def _internal(argv):
+    dataset, runtime, module, *options = argv
+    dataset, runtime = Path(dataset).resolve(), Path(runtime).resolve()
+    _inside(runtime, dataset)
+    sys.path.insert(0, str(runtime))
+    if module == '_frozen':
+        from types import SimpleNamespace
+        import torch
+        from resnet18 import common as cc, train_frozen
+        values = json.loads(options[0])
+        _inside(values['output'], dataset)
+        torch.set_num_threads(values['threads'])
+        args = SimpleNamespace(dataset=dataset, audit=Path(values['audit']),
+            output=Path(values['output']), resize_mode=cc.RESIZE_MODE, batch_size=32,
+            workers=values['workers'], overwrite=False, learning_rate=1e-3,
+            patience=5, epochs=30)
+        for seed in values['seeds']:
+            train_frozen.run_seed(seed, args, cc.get_device(values['cpu']))
+        return
+    if module not in _bundle()['entry_modules']:
+        raise ValueError(f'Unknown bundled experiment module: {module}')
+    sys.argv = [module, *options]
+    runpy.run_module(module, run_name='__main__')
+
+
+def _fresh(dataset, prefix):
+    parent = _inside(dataset / 'experiments', dataset)
+    parent.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix=prefix, dir=parent))
+
+
+def _training_output(args, *, fresh=False):
+    marker = args.dataset / 'experiments' / 'submission_latest.json'
+    if args.output:
+        output = _inside(args.output, args.dataset)
+    elif not fresh and marker.is_file():
+        output = _inside(json.loads(marker.read_text())['output'], args.dataset)
+    else:
+        output = _fresh(args.dataset, 'submission-')
+    output.mkdir(parents=True, exist_ok=True)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(json.dumps({'output': str(output)}, indent=2) + '\n')
+    return output
+
+
+def _verify(args, runtime):
+    _call('stdlib', 'data_preprocessing.verify_dataset',
+          ['--root', args.dataset, '--audit', args.audit], args, runtime)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('command', choices=COMMANDS)
+    parser.add_argument('--dataset', type=Path, default=Path('Dhan-Shomadhan'))
+    parser.add_argument('--audit', type=Path)
+    parser.add_argument('--output', type=Path, help='Training root, or comparison output for evaluation; must be under the dataset')
+    parser.add_argument('--runs', type=Path, help='Model-output root for evaluate; defaults to latest submission training run')
+    parser.add_argument('--svm-python', help='Python executable in the SVM environment')
+    parser.add_argument('--cnn-python', help='Python executable in the CNN/evaluation environment')
+    parser.add_argument('--workers', type=int, default=0)
+    parser.add_argument('--threads', type=int, default=4)
+    parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--seeds', type=int, nargs='+', choices=SEEDS, default=list(SEEDS))
+    parser.add_argument('--seed', type=int, choices=SEEDS, default=11, help='Diagnostic experiment seed')
+    parser.add_argument('--epochs', type=int, help='Diagnostic epoch cap only; report training retains 30/20 epoch caps')
+    parser.add_argument('--limit', type=int, help='Training/validation sample cap for smoke only')
+    parser.add_argument('--no-plots', action='store_true')
+    args = parser.parse_args(argv)
+    if sys.version_info[:2] != (3, 12):
+        parser.error('Use Python 3.12 to run this submission')
+    if args.workers < 0 or args.threads < 1 or len(args.seeds) != len(set(args.seeds)):
+        parser.error('Workers must be nonnegative, threads positive, and seeds unique')
+    if args.epochs is not None and (args.epochs < 1 or args.command not in ('smoke', 'compare-resize')):
+        parser.error('--epochs is available only for smoke and compare-resize diagnostics')
+    if args.limit is not None and (args.limit < 1 or args.command != 'smoke'):
+        parser.error('--limit is available only for smoke diagnostics')
+    args.dataset = args.dataset.resolve()
+    args.audit = _inside(args.audit or args.dataset / 'preprocessing', args.dataset)
+    if args.output:
+        args.output = _inside(args.output, args.dataset)
+    runtime = _materialise(args.dataset, args.audit)
+    temp = _inside(args.dataset / '.submission_runtime' / 'tmp', args.dataset)
+    temp.mkdir(parents=True, exist_ok=True)
+    os.environ.update(TMPDIR=str(temp), TMP=str(temp), TEMP=str(temp),
+                      PIP_CACHE_DIR=str(args.dataset / '.submission_runtime' / 'cache' / 'pip'))
+    tempfile.tempdir = str(temp)
+    print(f'Dataset: {args.dataset}', flush=True)
+    if args.command == 'setup':
+        print(f'Shared audit and five original splits installed at {args.audit}')
+        print(f'Installation requirements: {runtime / "requirements"}')
+        return
+    if args.command == 'install':
+        for kind in ('svm', 'cnn'):
+            environment = _inside(args.dataset / '.submission_envs' / kind, args.dataset)
+            if not _env_path(environment).is_file():
+                venv.EnvBuilder(with_pip=True).create(environment)
+            subprocess.run([str(_env_path(environment)), '-m', 'pip', 'install', '-r',
+                            str(runtime / 'requirements' / (kind + '.txt'))], check=True)
+        print('Both environments installed; subsequent commands select them automatically.')
+        return
+    if args.command in ('prepare', 'verify'):
+        _verify(args, runtime)
+        return
+    if args.command in ('download-weights', 'check', 'preview', 'smoke', 'compare-resize'):
+        options = [args.command, '--dataset', args.dataset, '--audit', args.audit,
+                   '--workers', args.workers, '--seed', args.seed]
+        if args.cpu:
+            options.append('--cpu')
+        if args.epochs is not None:
+            options.extend(['--epochs', args.epochs])
+        if args.limit is not None:
+            options.extend(['--limit', args.limit])
+        _call('cnn', 'resnet18.check_cnn', options, args, runtime)
+        return
+    if args.command == 'audit':
+        # Re-auditing is optional and separate; never regenerate the report splits.
+        output = args.output or _fresh(args.dataset, 'audit-') / 'preprocessing'
+        _call('cnn', 'data_preprocessing.prepare_dataset', ['audit', '--root', args.dataset,
+              '--output', output, '--workers', max(1, args.workers)], args, runtime)
+        _call('cnn', 'data_preprocessing.prepare_dataset', ['build', '--root', args.dataset,
+              '--output', output, '--conservative-pending'], args, runtime)
+        return
+    if args.command == 'train-thumbnail':
+        _verify(args, runtime)
+        output = args.output or _fresh(args.dataset, 'thumbnail-') / 'run'
+        _call('svm', 'evaluation.thumbnail_experiment', ['--dataset', args.dataset,
+              '--audit', args.audit, '--output', output, '--seeds', *args.seeds], args, runtime)
+        print(f'Preliminary thumbnail outputs: {output}; evaluate using evaluate-thumbnail --runs "{output}"')
+        return
+    if args.command.startswith('train'):
+        _verify(args, runtime)
+        # Validate both interpreter paths before starting a combined experiment.
+        if args.command in ('train', 'train-svm'):
+            _python('svm', args)
+        if args.command != 'train-svm':
+            _python('cnn', args)
+            if not (args.dataset / 'pretrained/resnet18-f37072fd.pth').is_file():
+                raise ValueError('Pretrained weights missing. Run download-weights before CNN training.')
+        output = _training_output(args, fresh=args.command == 'train')
+        if args.command in ('train', 'train-svm'):
+            _call('svm', 'hsv_lbp_svm.svm_baseline', ['--dataset', args.dataset,
+                '--audit', args.audit, '--output', output / 'baseline', '--seeds', *args.seeds], args, runtime)
+        if args.command == 'train-frozen':
+            values = dict(audit=str(args.audit), output=str(output), workers=args.workers,
+                          threads=args.threads, seeds=args.seeds, cpu=args.cpu)
+            _call('cnn', '_frozen', [json.dumps(values)], args, runtime)
+        elif args.command in ('train', 'train-cnns', 'train-finetuned'):
+            options = ['--dataset', args.dataset, '--audit', args.audit, '--output', output,
+                       '--workers', args.workers, '--threads', args.threads, '--seeds', *args.seeds]
+            if args.cpu:
+                options.append('--cpu')
+            _call('cnn', 'resnet18.run_role6', options, args, runtime)
+        print(f'Training output: {output}\nNext: python {Path(__file__).name} evaluate --dataset "{args.dataset}"')
+        return
+    if args.command == 'evaluate-thumbnail':
+        sources = ['--thumbnail-reference', _inside(args.runs, args.dataset) if args.runs
+                   else runtime / 'recorded' / 'thumbnail_reference']
+    elif args.command == 'evaluate-reported':
+        reported = runtime / 'recorded'
+        sources = ['--svm', reported / 'baseline', '--frozen', reported / 'frozen_resnet18',
+                   '--finetuned', reported / 'finetuned_resnet18']
+    else:
+        marker = args.dataset / 'experiments' / 'submission_latest.json'
+        if args.runs:
+            runs = _inside(args.runs, args.dataset)
+        elif marker.is_file():
+            runs = _inside(json.loads(marker.read_text())['output'], args.dataset)
+        else:
+            raise ValueError('No training run recorded. Use evaluate-reported, or train first, or supply --runs.')
+        sources = ['--svm', runs / 'baseline', '--frozen', runs / 'frozen_resnet18',
+                   '--finetuned', runs / 'finetuned_resnet18']
+    output = args.output or _fresh(args.dataset, 'evaluation-') / 'comparison'
+    options = [*sources, '--audit', args.audit, '--out', output]
+    if args.no_plots:
+        options.append('--no-plots')
+    _call('cnn', 'evaluation.role4_evaluation', options, args, runtime)
+    print(f'Summary: {output / "five_run_summary.csv"}')
+
+
+if __name__ == '__main__':
+    try:
+        if len(sys.argv) > 1 and sys.argv[1] == '_run':
+            _internal(sys.argv[2:])
+        else:
+            main()
+    except (ValueError, FileNotFoundError, subprocess.CalledProcessError) as exc:
+        raise SystemExit(f'Cannot continue: {exc}') from None
