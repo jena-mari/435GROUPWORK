@@ -1,0 +1,8 @@
+{
+  "archive": "D:\\PROJECTS\\JASWANTH\\COMPUTER VISION\\PROJECT\\CSCI435_Role5_Frozen_ResNet18.zip",
+  "archive_sha256": "949587cd720ed90c90fd9ffeb43d9f376ad4331f4896107d23add3c9fb43acf3",
+  "frozen_script_unchanged": true,
+  "frozen_script_sha256": "139b742fc993d469b3765ed09711dfbd308029f9455319c8ccbdd353ca4c283b",
+  "shared_common_identical": true,
+  "archive_contains_trained_checkpoints": false
+}

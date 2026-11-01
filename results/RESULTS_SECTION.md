@@ -16,7 +16,8 @@ each training partition. The frozen ResNet-18 replaced its classifier with a
 512-to-5 linear head and trained it with Adam at learning rate 10⁻³. The
 fine-tuned model started from the selected frozen checkpoint for the same seed
 and trained `layer4` and the head with learning rates 10⁻⁵ and 10⁻⁴. Both CNNs
-used batch size 32, ImageNet normalisation, 224×224 aspect-preserving padding,
+used batch size 32, ImageNet normalisation and the final Role 6 portrait-layout
+transform,
 training-only horizontal flips and rotations up to ±10°, with fixed BatchNorm
 running statistics.
 
@@ -34,17 +35,17 @@ percentages. Combined scores are calculated directly from all test predictions.
 | HSV–LBP–SVM | White | 54.88 ± 3.59 | 51.24 ± 1.72 |
 | HSV–LBP–SVM | Field | 51.60 ± 4.56 | 51.33 ± 5.37 |
 | HSV–LBP–SVM | Combined | 53.88 ± 3.42 | 52.17 ± 2.59 |
-| Frozen ResNet-18 | White | 50.52 ± 8.04 | 43.13 ± 6.24 |
-| Frozen ResNet-18 | Field | 41.20 ± 9.23 | 38.75 ± 9.00 |
-| Frozen ResNet-18 | Combined | 47.69 ± 8.11 | 43.08 ± 7.41 |
-| Fine-tuned ResNet-18 | White | 54.70 ± 1.42 | 50.36 ± 3.34 |
-| Fine-tuned ResNet-18 | Field | 46.00 ± 5.83 | 43.68 ± 5.38 |
-| Fine-tuned ResNet-18 | Combined | 52.06 ± 2.31 | 49.35 ± 2.20 |
+| Frozen ResNet-18 | White | 56.62 ± 7.12 | 50.58 ± 6.03 |
+| Frozen ResNet-18 | Field | 49.20 ± 7.29 | 46.94 ± 9.50 |
+| Frozen ResNet-18 | Combined | 54.36 ± 4.96 | 50.16 ± 5.16 |
+| Fine-tuned ResNet-18 | White | 69.34 ± 4.69 | 64.18 ± 6.43 |
+| Fine-tuned ResNet-18 | Field | 60.40 ± 6.54 | 57.92 ± 7.51 |
+| Fine-tuned ResNet-18 | Combined | 66.62 ± 3.31 | 63.17 ± 5.12 |
 
 *Table 1. Five-run test performance on the shared holdouts.*
 
 The SVM achieved the highest combined macro-F1 at 52.17%. Fine-tuning improved
-the combined macro-F1 over the frozen model from 43.08% to 49.35%, although it
+the combined macro-F1 over the frozen model from 50.16% to 63.17%, although it
 remained below the SVM result. Fine-tuning also reduced run-to-run variation:
 the combined macro-F1 standard deviation decreased from 7.41 to 2.20 points.
 
@@ -66,7 +67,7 @@ specific examples for the final report.
 
 Field images were more difficult for both ResNet variants: the frozen macro-F1
 dropped from 43.13% on white images to 38.75% on field images, and the
-fine-tuned score dropped from 50.36% to 43.68%. The SVM showed a smaller
+fine-tuned score dropped from 64.18% to 57.92%. The SVM showed a smaller
 background gap. This is consistent with field clutter and lighting making lesion
 appearance less consistent, but the experiment does not establish background as
 the sole cause.

@@ -1,0 +1,1 @@
+PASS: all 1106 source images, source metadata and 15 manifests match the audited checksums.

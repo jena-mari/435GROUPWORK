@@ -1,7 +1,9 @@
 # Group handover
 
 The repository now contains the shared data preparation, the full SVM run,
-five frozen ResNet-18 runs, five fine-tuned ResNet-18 runs and their comparison.
+five frozen ResNet-18 runs, the final Role 6 fine-tuned ResNet-18 runs and their
+comparison. The Role 6 package includes source, validation-selection records,
+test predictions, checks and report artifacts.
 Use the saved predictions in `results/` when writing the report.
 
 The full local outputs used for the report are named
@@ -18,7 +20,7 @@ GitHub copies use `results/baseline/`, `results/frozen_resnet18/`,
 | Dataset audit and splits | `data_preprocessing/`, `Dhan-Shomadhan/preprocessing/` | Keep the current split version unchanged |
 | HSV–LBP–SVM | `hsv_lbp_svm/`, `results/baseline/` | Full validation grid; scaler fitted on training data only |
 | Frozen ResNet-18 | `resnet18/train_frozen.py`, `results/frozen_resnet18/` | ImageNet backbone, head only; official local output is `frozen_resnet18_8ep` |
-| Fine-tuned ResNet-18 | `resnet18/train_finetuned.py`, `results/finetuned_resnet18/` | Same-seed frozen checkpoint, `layer4` + head; official local output is `finetuned_resnet18_4ep` |
+| Fine-tuned ResNet-18 | `resnet18/train_finetuned.py`, `resnet18/ROLE6_FINE_TUNED_EXPERIMENTS.md`, `results/finetuned_resnet18/` | Same-seed frozen checkpoint, validation-selected `layer4` + head; final Role 6 outputs |
 | Evaluation | `evaluation/`, `results/comparison/` | Checks IDs and manifests, then produces tables and matrices |
 
 ## Result files
@@ -40,7 +42,8 @@ feature caches or raw images.
 ## Report values
 
 Use the mean and sample standard deviation columns from
-`results/comparison/five_run_summary.csv`. Report white, field and combined
+`results/finetuned_resnet18/summary.csv` for the final Role 6 method and from
+`results/comparison/five_run_summary.csv` for the full comparison. Report white, field and combined
 test subsets separately. Combined scores are calculated from all predictions,
 not by averaging the two background scores.
 

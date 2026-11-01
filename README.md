@@ -50,8 +50,10 @@ All methods use `conservative_splits/bad2609eeda16df2` with seeds 11, 22, 33,
 constraints cause small count differences between runs. Related-image groups
 never cross a partition within a run.
 
-The CNNs use 224×224 aspect-preserving padding, ImageNet normalisation, and
-training-only horizontal flips plus rotations up to ±10°. The SVM uses its own
+The reported Role 6 fine-tuned runs use the final shared 448×224 portrait
+layout, ImageNet normalisation, and training-only augmentation. The frozen and
+fine-tuned run configurations record the exact transform policy used per run.
+The SVM uses its own
 256×256 resize, Gaussian blur and HSV/LBP features. Background is evaluation
 metadata, not a model input.
 
@@ -66,17 +68,18 @@ percentages.
 | HSV–LBP–SVM | White | 54.88 ± 3.59 | 51.24 ± 1.72 |
 | HSV–LBP–SVM | Field | 51.60 ± 4.56 | 51.33 ± 5.37 |
 | HSV–LBP–SVM | Combined | 53.88 ± 3.42 | 52.17 ± 2.59 |
-| Frozen ResNet-18 | White | 50.52 ± 8.04 | 43.13 ± 6.24 |
-| Frozen ResNet-18 | Field | 41.20 ± 9.23 | 38.75 ± 9.00 |
-| Frozen ResNet-18 | Combined | 47.69 ± 8.11 | 43.08 ± 7.41 |
-| Fine-tuned ResNet-18 | White | 54.70 ± 1.42 | 50.36 ± 3.34 |
-| Fine-tuned ResNet-18 | Field | 46.00 ± 5.83 | 43.68 ± 5.38 |
-| Fine-tuned ResNet-18 | Combined | 52.06 ± 2.31 | 49.35 ± 2.20 |
+| Frozen ResNet-18 | White | 56.62 ± 7.12 | 50.58 ± 6.03 |
+| Frozen ResNet-18 | Field | 49.20 ± 7.29 | 46.94 ± 9.50 |
+| Frozen ResNet-18 | Combined | 54.36 ± 4.96 | 50.16 ± 5.16 |
+| Fine-tuned ResNet-18 | White | 69.34 ± 4.69 | 64.18 ± 6.43 |
+| Fine-tuned ResNet-18 | Field | 60.40 ± 6.54 | 57.92 ± 7.51 |
+| Fine-tuned ResNet-18 | Combined | 66.62 ± 3.31 | 63.17 ± 5.12 |
 
-The SVM used its full validation grid. To keep the CNN runs practical on the
-available machine, the frozen runs used an 8-epoch cap and the fine-tuned runs
-used a 4-epoch additional-training cap. Both caps are within the planned limits
-of 30 and 20 epochs, respectively, and are recorded in each run configuration.
+The SVM used its full validation grid. The final Role 6 fine-tuning used five
+shared seeds, validation-only candidate/epoch selection, and up to 20 additional
+epochs; the selected epochs are recorded in each run configuration. The frozen
+prerequisites were generated locally from the supplied frozen implementation
+because trained Person 5 checkpoints were not included.
 
 Open `results/comparison/five_run_summary.csv` for the unrounded values. The
 three pooled confusion matrices are in `results/comparison/figures/`; pooled

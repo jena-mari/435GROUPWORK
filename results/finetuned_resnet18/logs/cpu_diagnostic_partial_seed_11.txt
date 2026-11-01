@@ -1,0 +1,14 @@
+
+[frozen_resnet18] seed=11, device=cpu, trainable=2,565/11,179,077
+seed 11 epoch 01/30: train_loss=1.5552 val_macro_f1=0.2876 [best]
+seed 11 epoch 02/30: train_loss=1.4006 val_macro_f1=0.3728 [best]
+seed 11 epoch 03/30: train_loss=1.3090 val_macro_f1=0.3918 [best]
+seed 11 epoch 04/30: train_loss=1.2541 val_macro_f1=0.3879 
+seed 11 epoch 05/30: train_loss=1.2092 val_macro_f1=0.4669 [best]
+seed 11 epoch 06/30: train_loss=1.1728 val_macro_f1=0.4716 [best]
+seed 11 epoch 07/30: train_loss=1.1228 val_macro_f1=0.4625 
+seed 11 epoch 08/30: train_loss=1.0868 val_macro_f1=0.4753 [best]
+seed 11 epoch 09/30: train_loss=1.0738 val_macro_f1=0.5069 [best]
+seed 11 epoch 10/30: train_loss=1.0587 val_macro_f1=0.4974 
+seed 11 epoch 11/30: train_loss=1.0415 val_macro_f1=0.4927 
+Preliminary CPU check intentionally stopped once GPU setup was ready. Its partial checkpoint is preserved under experiments/resnet18_checks/cpu_frozen_partial/seed_11. These scores are not reported as completed experiments.

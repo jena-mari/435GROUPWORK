@@ -1,477 +1,581 @@
-"""Shared ResNet-18 inputs, model contracts, checkpointing and predictions.
+"""Shared ResNet-18 components for the frozen and fine-tuned CNN methods (Role 3).
 
-Roles 5 and 6 own their experiment loops. This module fixes the parts that must
-agree between them and rejects incompatible manifests and checkpoints.
+Both CNN variants import this module so that they use the same:
+    * shared splits, loaded through data_preprocessing's RiceDataset   load_shared_splits()
+    * CNN input transforms passed through RiceDataset(transform=...)    TrainTransform, EvalTransform
+    * data loaders with reproducible augmentation                       make_loader()
+    * ImageNet ResNet-18 weights, verified on load                      build_resnet18(), download_weights()
+    * layer freezing and fixed BatchNorm statistics                     set_trainable(), ResNet18.train()
+    * checkpoint saving, loading and selection                          save_checkpoint(), load_checkpoint(), BestTracker
+    * prediction, export in the group format and scoring                predict(), write_predictions(), get_scores()
+    * run records                                                       new_run_dir(), base_run_config(), summary_rows()
+
+Run from the repository root. Permitted packages only (PyTorch, NumPy, Pillow, scikit-learn); ResNet-18 is
+defined here in plain PyTorch, so torchvision is not needed. The SVM's resize and Gaussian blur are not used.
+
+Minimal use (Role 5 shown; Role 6 starts from the frozen checkpoint and trains {"layer4": 1e-5, "fc": 1e-4}):
+
+    from resnet18 import common as cc
+    cc.set_seed(seed)
+    data, version = cc.load_shared_splits(cc.DATASET, cc.AUDIT, seed)        # RiceDataset objects
+    train_dl = cc.make_loader(data["train"], train=True, seed=seed)
+    val_dl = cc.make_loader(data["validation"], train=False, seed=seed)
+    model = cc.build_resnet18(cc.DATASET).to(device)
+    optimiser = torch.optim.Adam(cc.set_trainable(model, {"fc": 1e-3}))
+    for epoch ...:
+        model.train()                                  # BatchNorm statistics stay fixed automatically
+        ...
+        val = cc.predict(model, val_dl, device)
+        if tracker.update(val["macro_f1"], val["loss"], epoch): cc.save_checkpoint(...)
 """
 from __future__ import annotations
 
+import csv
+import hashlib
 import json
 import math
-import os
 import platform
 import random
-from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
-import torch
-import torchvision
 import PIL
-from PIL import Image, ImageOps
+import sklearn
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from PIL import Image, ImageEnhance
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
-from torch import nn
-from torch.utils.data import DataLoader, Subset
-from torchvision import transforms
-from torchvision.models import ResNet18_Weights, resnet18
-from torchvision.transforms import InterpolationMode
+from torch.utils.data import DataLoader
 
 from data_preprocessing.prepare_dataset import (
-    BACKGROUNDS, CLASSES, PARTITIONS, SEEDS, RiceDataset, sha_file,
-    validate_split, write_csv, write_json,
+    BACKGROUNDS, CLASSES, PARTITIONS, SEEDS, RiceDataset, rgb_image, sha_file, validate_split, write_csv, write_json,
 )
 
-STAGES = ('frozen', 'finetuned')
-METHODS = {'frozen': 'frozen_resnet18', 'finetuned': 'finetuned_resnet18'}
-WEIGHTS = ResNet18_Weights.IMAGENET1K_V1
-STAGE_DEFAULTS = {
-    'frozen': dict(batch_size=32, max_epochs=30, patience=5),
-    'finetuned': dict(batch_size=32, max_epochs=20, patience=5),
-}
+# ============================================================================================
+# Shared locations and agreed settings
+# ============================================================================================
+REPO = Path(__file__).resolve().parents[1]
+DATASET = Path("Dhan-Shomadhan")
+AUDIT = REPO / "Dhan-Shomadhan" / "preprocessing"
+NUM_CLASSES = len(CLASSES)
+METHODS = ("frozen_resnet18", "finetuned_resnet18")
+
+WEIGHTS_URL = "https://download.pytorch.org/models/resnet18-f37072fd.pth"
+WEIGHTS_FILE = Path("pretrained") / "resnet18-f37072fd.pth"       # under the dataset directory
+WEIGHTS_SHA256_PREFIX = "f37072fd"                                  # PyTorch's published hash prefix
+
+IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+FILL = tuple(int(round(255 * m)) for m in IMAGENET_MEAN)           # padding colour; becomes ~0 after normalising
+
+# Input-size policy. Source images are portrait (1952 x 4160 for 1,089 of 1,106 images, ratio ~2.13).
+#   portrait: turn landscape images upright, resize to 448 x 224 (H x W). Keeps the leaf's shape and gives
+#             lesions twice the pixels of a square input; ResNet's global pooling accepts non-square inputs.
+#   squash:   resize to 224 x 224 (stretches leaves about 2x sideways).
+#   pad:      keep aspect ratio, pad to 224 x 224 with the ImageNet mean colour (photo ~105 px wide).
+RESIZE_MODES = {"portrait": (448, 224), "squash": (224, 224), "pad": (224, 224)}
+RESIZE_MODE = "portrait"            # proposed default; confirm with check_cnn compare-resize on validation data
+
+AUGMENTATION = dict(crop_area=(0.6, 1.0), crop_aspect_jitter=(3 / 4, 4 / 3), hflip=0.5, vflip=0.5,
+                    rotation_degrees=15.0, brightness=0.2, contrast=0.2, hue_saturation="unchanged")
+BATCH_SIZE = 32
+PATIENCE = 5
+SELECTION_RULE = ("highest validation macro-F1; exact ties keep the lower validation loss; "
+                  f"stop after {PATIENCE} consecutive epochs without improvement; test images not used")
 
 
-@dataclass(frozen=True)
-class ImagePolicy:
-    size: int = 224
-    horizontal_flip_probability: float = .5
-    rotation_degrees: float = 10.
-    mean: tuple = (.485, .456, .406)
-    std: tuple = (.229, .224, .225)
-    fill: tuple = (124, 116, 104)
-
-    def record(self):
-        return json.loads(json.dumps(dict(asdict(self),
-            resize='bilinear aspect-ratio-preserving letterbox',
-            training_order='letterbox, horizontal flip, expanded rotation, letterbox, tensor, normalise',
-            evaluation_order='letterbox, tensor, normalise', color_jitter=False)))
-
-
-@dataclass(frozen=True)
-class Letterbox:
-    size: int
-    fill: tuple
-
-    def __call__(self, image):
-        image = ImageOps.contain(image.convert('RGB'), (self.size, self.size),
-                                method=Image.Resampling.BILINEAR)
-        canvas = Image.new('RGB', (self.size, self.size), self.fill)
-        canvas.paste(image, ((self.size - image.width) // 2, (self.size - image.height) // 2))
-        return canvas
-
-
-def image_transform(training=False, policy=ImagePolicy()):
-    if policy.size <= 0 or not 0 <= policy.horizontal_flip_probability <= 1 or policy.rotation_degrees < 0:
-        raise ValueError('Invalid image policy')
-    operations = [Letterbox(policy.size, policy.fill)]
-    if training:
-        operations += [transforms.RandomHorizontalFlip(policy.horizontal_flip_probability),
-            transforms.RandomRotation(policy.rotation_degrees, interpolation=InterpolationMode.BILINEAR,
-                                      expand=True, fill=policy.fill),
-            Letterbox(policy.size, policy.fill)]
-    return transforms.Compose(operations + [transforms.ToTensor(), transforms.Normalize(policy.mean, policy.std)])
-
-
-def seed_everything(seed):
+# ============================================================================================
+# Reproducibility and environment
+# ============================================================================================
+def set_seed(seed, deterministic=True):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed_all(seed)
+    if deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
-def seed_worker(_worker_id):
-    seed = torch.initial_seed() % (2 ** 32)
-    random.seed(seed)
-    np.random.seed(seed)
+def get_device(force_cpu=False):
+    if not force_cpu and torch.cuda.is_available():
+        return torch.device("cuda")
+    if not force_cpu and getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 
-def choose_device(requested='auto'):
-    if requested == 'auto':
-        requested = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-    if requested == 'mps' and not torch.backends.mps.is_available():
-        raise ValueError('MPS is unavailable; select cpu or check the PyTorch/macOS installation')
-    if requested == 'cuda' and not torch.cuda.is_available():
-        raise ValueError('CUDA is unavailable on this machine')
-    return torch.device(requested)
+def environment(device):
+    return dict(python=platform.python_version(), torch=torch.__version__, numpy=np.__version__,
+                pillow=PIL.__version__, sklearn=sklearn.__version__, device=str(device),
+                cuda=torch.version.cuda if torch.cuda.is_available() else None,
+                cudnn_deterministic=bool(torch.backends.cudnn.deterministic),
+                cudnn_benchmark=bool(torch.backends.cudnn.benchmark))
 
 
-@dataclass
-class SharedData:
-    datasets: dict
-    loaders: dict
-    context: dict
+# ============================================================================================
+# Shared splits through RiceDataset (same checks as the SVM baseline's loader)
+# ============================================================================================
+def source_path(root, relative):
+    """Full path to a source image. resolve() matters on Windows: the source folders end in spaces
+    ("Field Background  ", "White Background "), and Windows drops trailing spaces from a plain path, so the
+    file cannot be opened. The resolved path keeps them (the same form RiceDataset uses to check the files)."""
+    return (Path(root) / relative).resolve()
 
 
-def make_shared_data(dataset_root, audit, seed, batch_size=32, num_workers=0, policy=ImagePolicy()):
-    root, audit = Path(dataset_root).resolve(), Path(audit).resolve()
-    if seed not in SEEDS or batch_size <= 0 or num_workers < 0:
-        raise ValueError('Invalid split seed, batch size or worker count')
-    version = (audit / (audit / 'CURRENT_SPLIT_VERSION.txt').read_text().strip()).resolve()
+class SharedRiceDataset(RiceDataset):
+    """The group's RiceDataset with all its manifest checks, unchanged, except that each image is opened
+    through its resolved path (see source_path) so loading also works on Windows. Returns the same fields."""
+
+    def __getitem__(self, index):
+        row = self.rows[index]
+        image = rgb_image(source_path(self.root, row["path"]))
+        if self.transform is not None:
+            image = self.transform(image)
+        return dict(image=image, disease_id=int(row["disease_id"]),
+                    background_id=int(row["background_id"]), image_id=row["image_id"])
+
+
+def current_version(audit=AUDIT):
+    audit = Path(audit).resolve()
+    version = (audit / (audit / "CURRENT_SPLIT_VERSION.txt").read_text().strip()).resolve()
     if not version.is_relative_to(audit):
-        raise ValueError('Split version must remain inside the shared audit directory')
-    provenance = json.loads((version / 'provenance.json').read_text())
-    datasets, loaders, hashes, all_rows, assignment = {}, {}, {}, [], {}
-    for index, partition in enumerate(PARTITIONS):
-        relative = f'seed_{seed}/{partition}.csv'
-        path = version / relative
-        hashes[partition] = sha_file(path)
-        if hashes[partition] != provenance['manifest_sha256'][relative]:
-            raise ValueError(f'Manifest checksum changed: {relative}')
-        dataset = RiceDataset(root, path, transform=image_transform(partition == 'train', policy))
+        raise ValueError("Split version must be inside the shared audit directory")
+    return version
+
+
+def load_shared_splits(root=DATASET, audit=AUDIT, seed=11, train_transform=None, eval_transform=None,
+                       resize_mode=RESIZE_MODE):
+    """RiceDataset objects for one seed's train/validation/test manifests, with CNN transforms attached.
+    Checks manifest checksums, seed/partition fields, group separation and full coverage."""
+    if seed not in SEEDS:
+        raise ValueError(f"Seed must be one of {SEEDS}")
+    train_transform = train_transform or TrainTransform(seed, resize_mode)
+    eval_transform = eval_transform or EvalTransform(resize_mode)
+    version = current_version(audit)
+    provenance = json.loads((version / "provenance.json").read_text())
+    datasets, all_rows, assignment = {}, [], {}
+    for partition in PARTITIONS:
+        relative = f"seed_{seed}/{partition}.csv"
+        manifest = version / relative
+        if sha_file(manifest) != provenance["manifest_sha256"][relative]:
+            raise ValueError(f"Shared manifest checksum changed: {relative}")
+        transform = train_transform if partition == "train" else eval_transform
+        dataset = SharedRiceDataset(root, manifest, transform=transform)
         for row in dataset.rows:
-            if int(row['seed']) != seed or row['partition'] != partition:
-                raise ValueError('Manifest seed or partition mismatch')
-            gid = row['group_id']
+            if int(row["seed"]) != seed or row["partition"] != partition:
+                raise ValueError("Manifest seed/partition mismatch")
+            gid = row["group_id"]
             if gid in assignment and assignment[gid] != partition:
-                raise ValueError('Related-image group crosses partitions')
+                raise ValueError("A related-image group crosses partitions")
             assignment[gid] = partition
         datasets[partition] = dataset
         all_rows.extend(dataset.rows)
-        loaders[partition] = DataLoader(dataset, batch_size=batch_size,
-            shuffle=partition == 'train', num_workers=num_workers, drop_last=False,
-            worker_init_fn=seed_worker, generator=torch.Generator().manual_seed(seed + index))
     validate_split(all_rows, assignment)
-    if len(all_rows) != provenance['eligible_images']:
-        raise ValueError('Manifests do not cover the eligible inventory')
-    context = dict(seed=seed, manifest_version=version.relative_to(audit).as_posix(),
-                   manifest_sha256=hashes, policy=policy.record(), class_mapping=CLASSES,
-                   background_mapping=BACKGROUNDS, run_scope='experiment')
-    return SharedData(datasets, loaders, context)
+    if len(all_rows) != provenance["eligible_images"]:
+        raise ValueError("Shared partitions do not cover the eligible inventory")
+    return datasets, version
 
 
-def build_model(stage='frozen', *, pretrained=True, cache_dir=None, weights_path=None):
-    if stage not in STAGES:
-        raise ValueError(f'Choose a stage from {STAGES}')
-    if stage == 'finetuned' and pretrained:
-        raise ValueError('Use initialise_finetuned() with the same-split frozen checkpoint')
-    model = resnet18(weights=None)
-    if pretrained:
-        if weights_path is not None:
-            expected = Path(WEIGHTS.url).stem.rsplit('-', 1)[-1]
-            if not sha_file(Path(weights_path)).startswith(expected):
-                raise ValueError('Offline weights do not match the official ImageNet ResNet-18 checksum')
-            state = torch.load(weights_path, map_location='cpu', weights_only=True)
-        else:
-            if cache_dir is None:
-                raise ValueError('Specify cache_dir under the dataset for pretrained weights')
-            cache_file = Path(cache_dir) / Path(WEIGHTS.url).name
-            expected = cache_file.stem.rsplit('-', 1)[-1]
-            if cache_file.exists() and not sha_file(cache_file).startswith(expected):
-                raise ValueError('Cached ImageNet weights failed checksum verification; replace the damaged cache file')
-            state = torch.hub.load_state_dict_from_url(WEIGHTS.url, model_dir=str(cache_dir),
-                        map_location='cpu', check_hash=True, progress=False, weights_only=True)
-        model.load_state_dict(state, strict=True)
-    model.fc = nn.Linear(512, len(CLASSES))
-    model.rice_weights_source = 'IMAGENET1K_V1' if pretrained else 'NONE'
-    configure_trainable(model, stage)
+def manifest_version_name(version, audit=AUDIT):
+    return Path(version).resolve().relative_to(Path(audit).resolve()).as_posix()
+
+
+# ============================================================================================
+# CNN transforms (passed to RiceDataset's transform= argument; input is an RGB PIL image)
+# ============================================================================================
+def _orient(img, mode):
+    """Portrait mode turns the few landscape images upright; leaves have no fixed orientation."""
+    if mode == "portrait" and img.width > img.height:
+        return img.transpose(Image.Transpose.ROTATE_90)
+    return img
+
+
+def _fit(img, mode):
+    """Resize a PIL image to the model input size according to the resize mode."""
+    h, w = RESIZE_MODES[mode]
+    if mode != "pad":
+        return img.resize((w, h), Image.Resampling.BILINEAR, reducing_gap=3.0)
+    scale = min(w / img.width, h / img.height)
+    nw, nh = max(1, round(img.width * scale)), max(1, round(img.height * scale))
+    canvas = Image.new("RGB", (w, h), FILL)
+    canvas.paste(img.resize((nw, nh), Image.Resampling.BILINEAR, reducing_gap=3.0), ((w - nw) // 2, (h - nh) // 2))
+    return canvas
+
+
+def _random_crop(img, rng):
+    """Random region of 60-100% of the image area, aspect ratio jittered by 3:4-4:3 relative to the image."""
+    W, H = img.size
+    lo, hi = AUGMENTATION["crop_aspect_jitter"]
+    for _ in range(10):
+        area = rng.uniform(*AUGMENTATION["crop_area"])
+        r = math.exp(rng.uniform(math.log(lo), math.log(hi)))
+        cw, ch = round(W * math.sqrt(area * r)), round(H * math.sqrt(area / r))
+        if 0 < cw <= W and 0 < ch <= H:
+            x0, y0 = int(rng.integers(0, W - cw + 1)), int(rng.integers(0, H - ch + 1))
+            return img.crop((x0, y0, x0 + cw, y0 + ch))
+    return img
+
+
+def normalise(img):
+    """PIL RGB -> float32 HxWx3 array with fixed ImageNet normalisation (no statistics from our data)."""
+    return (np.asarray(img, dtype=np.float32) / 255.0 - IMAGENET_MEAN) / IMAGENET_STD
+
+
+def to_tensor(array):
+    return torch.from_numpy(np.ascontiguousarray(array.transpose(2, 0, 1)))
+
+
+class EvalTransform:
+    """Deterministic: orient, resize the whole image (no cropping, so leaf tips are kept), normalise."""
+
+    def __init__(self, resize_mode=RESIZE_MODE):
+        if resize_mode not in RESIZE_MODES:
+            raise ValueError(f"resize_mode must be one of {list(RESIZE_MODES)}")
+        self.mode = resize_mode
+
+    def pil(self, img):
+        return _fit(_orient(img, self.mode), self.mode)
+
+    def __call__(self, img):
+        return to_tensor(normalise(self.pil(img)))
+
+    def settings(self):
+        return dict(type="eval", resize_mode=self.mode, input_hw=RESIZE_MODES[self.mode], resample="bilinear",
+                    crop="none (whole image)", normalisation=dict(mean=IMAGENET_MEAN.tolist(), std=IMAGENET_STD.tolist()))
+
+
+class TrainTransform(EvalTransform):
+    """Training only: random crop, resize, flips, rotation, brightness/contrast, then normalise.
+    Uses its own seeded generator; make_loader() reseeds it per worker so runs are reproducible."""
+
+    def __init__(self, seed, resize_mode=RESIZE_MODE):
+        super().__init__(resize_mode)
+        self.seed = seed
+        self.rng = np.random.default_rng(seed)
+
+    def reseed(self, seed):
+        self.rng = np.random.default_rng(seed)
+
+    def pil(self, img):
+        rng, a = self.rng, AUGMENTATION
+        img = _fit(_random_crop(_orient(img, self.mode), rng), self.mode)
+        if rng.random() < a["hflip"]:
+            img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        if rng.random() < a["vflip"]:
+            img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        img = img.rotate(rng.uniform(-a["rotation_degrees"], a["rotation_degrees"]),
+                         resample=Image.Resampling.BILINEAR, fillcolor=FILL)
+        img = ImageEnhance.Brightness(img).enhance(1 + rng.uniform(-a["brightness"], a["brightness"]))
+        img = ImageEnhance.Contrast(img).enhance(1 + rng.uniform(-a["contrast"], a["contrast"]))
+        return img
+
+    def settings(self):
+        s = super().settings()
+        s.update(type="train", seed=self.seed, augmentation=AUGMENTATION, order=[
+            "orient", "random crop", "resize", "flips", "rotation (ImageNet-mean fill)", "brightness", "contrast",
+            "normalise"])
+        return s
+
+
+def transform_settings(datasets):
+    return {part: ds.transform.settings() for part, ds in datasets.items()}
+
+
+# ============================================================================================
+# Loaders
+# ============================================================================================
+def _worker_init(worker_id):
+    info = torch.utils.data.get_worker_info()
+    transform = getattr(info.dataset, "transform", None)
+    if hasattr(transform, "reseed"):
+        transform.reseed(torch.initial_seed() % 2 ** 32)   # derived from the loader generator: reproducible
+
+
+def make_loader(dataset, train, seed, batch_size=BATCH_SIZE, workers=0):
+    """train=True: shuffled (seeded) training batches; otherwise fixed order.
+    Batches are dicts: image (B x 3 x H x W), disease_id, background_id (tensors), image_id (list of str).
+    workers > 0 speeds up decoding of the full-size JPEGs; on Windows call from under `if __name__ == "__main__":`."""
+    return DataLoader(dataset, batch_size=batch_size, shuffle=train, num_workers=workers,
+                      generator=torch.Generator().manual_seed(seed),
+                      worker_init_fn=_worker_init if workers else None, persistent_workers=bool(workers))
+
+
+# ============================================================================================
+# ResNet-18 (layer names match PyTorch's ImageNet weights file)
+# ============================================================================================
+class BasicBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, 3, stride, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_ch)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, 3, 1, 1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_ch)
+        self.downsample = None
+        if stride != 1 or in_ch != out_ch:
+            self.downsample = nn.Sequential(nn.Conv2d(in_ch, out_ch, 1, stride, bias=False), nn.BatchNorm2d(out_ch))
+
+    def forward(self, x):
+        identity = x if self.downsample is None else self.downsample(x)
+        out = F.relu(self.bn1(self.conv1(x)))
+        return F.relu(self.bn2(self.conv2(out)) + identity)
+
+
+class ResNet18(nn.Module):
+    STAGES = ("stem", "layer1", "layer2", "layer3", "layer4", "fc")
+
+    def __init__(self, num_classes=NUM_CLASSES, freeze_bn_stats=True):
+        super().__init__()
+        self.freeze_bn_stats = freeze_bn_stats
+        self.conv1 = nn.Conv2d(3, 64, 7, 2, 3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.maxpool = nn.MaxPool2d(3, 2, 1)
+        self.layer1 = nn.Sequential(BasicBlock(64, 64), BasicBlock(64, 64))
+        self.layer2 = nn.Sequential(BasicBlock(64, 128, 2), BasicBlock(128, 128))
+        self.layer3 = nn.Sequential(BasicBlock(128, 256, 2), BasicBlock(256, 256))
+        self.layer4 = nn.Sequential(BasicBlock(256, 512, 2), BasicBlock(512, 512))
+        self.fc = nn.Linear(512, num_classes)
+
+    def train(self, mode=True):
+        """model.train() normally puts BatchNorm into training mode, which updates its running statistics.
+        With freeze_bn_stats (the agreed policy) every BatchNorm layer is put straight back into eval mode,
+        so the ImageNet running mean/variance never change. BN scale/shift of unfrozen stages still learn."""
+        super().train(mode)
+        if mode and self.freeze_bn_stats:
+            for m in self.modules():
+                if isinstance(m, nn.BatchNorm2d):
+                    m.eval()
+        return self
+
+    def stage(self, name):
+        return nn.ModuleList([self.conv1, self.bn1]) if name == "stem" else getattr(self, name)
+
+    def features(self, x):
+        x = self.maxpool(F.relu(self.bn1(self.conv1(x))))
+        x = self.layer4(self.layer3(self.layer2(self.layer1(x))))
+        return torch.flatten(F.adaptive_avg_pool2d(x, 1), 1)
+
+    def forward(self, x):
+        return self.fc(self.features(x))
+
+
+def weights_path(root=DATASET):
+    return Path(root) / WEIGHTS_FILE
+
+
+def download_weights(root=DATASET):
+    dst = weights_path(root)
+    if dst.exists():
+        print(f"Weights already present: {dst}")
+    else:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Downloading {WEIGHTS_URL}\n  -> {dst}")
+        torch.hub.download_url_to_file(WEIGHTS_URL, str(dst), progress=True)
+    verify_weights(dst)
+    return dst
+
+
+def verify_weights(path):
+    digest = sha_file(path)
+    if not digest.startswith(WEIGHTS_SHA256_PREFIX):
+        raise ValueError(f"{path} SHA-256 {digest[:12]}... does not match PyTorch's published prefix "
+                         f"{WEIGHTS_SHA256_PREFIX}; download it again")
+    return digest
+
+
+def build_resnet18(root=DATASET, pretrained=True):
+    """ResNet-18 with verified ImageNet backbone weights and a new randomly initialised 512 -> 5 head."""
+    model = ResNet18(NUM_CLASSES)
+    if not pretrained:
+        return model
+    path = weights_path(root)
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {path}. Run `python -m resnet18.check_cnn download-weights`, or "
+                                f"download {WEIGHTS_URL} and place it there without renaming.")
+    verify_weights(path)
+    state = {k: v for k, v in torch.load(path, map_location="cpu", weights_only=True).items()
+             if not k.startswith("fc.")}
+    missing, unexpected = model.load_state_dict(state, strict=False)
+    if set(missing) != {"fc.weight", "fc.bias"} or unexpected:
+        raise RuntimeError(f"Weights do not match ResNet-18: missing={missing}, unexpected={unexpected}")
     return model
 
 
-def configure_trainable(model, stage):
-    if stage not in STAGES:
-        raise ValueError(f'Choose a stage from {STAGES}')
-    for name, parameter in model.named_parameters():
-        parameter.requires_grad = name.startswith('fc.') or (stage == 'finetuned' and name.startswith('layer4.'))
-    prepare_training_mode(model, stage)
-    assert_model_contract(model, stage)
+def weights_record(root=DATASET):
+    path = weights_path(root)
+    return dict(source=WEIGHTS_URL, file=path.as_posix(), sha256=sha_file(path) if path.exists() else None)
 
 
-def prepare_training_mode(model, stage):
-    """Call after any model.train(): gradients and BatchNorm state are separate."""
-    if stage not in STAGES:
-        raise ValueError(f'Choose a stage from {STAGES}')
-    model.train()
-    for name, child in model.named_children():
-        child.train(name == 'fc' or (stage == 'finetuned' and name == 'layer4'))
-    for module in model.modules():
-        if isinstance(module, nn.modules.batchnorm._BatchNorm):
-            module.eval()
+def set_trainable(model, learning_rates):
+    """Freeze every parameter, then unfreeze the named stages. Returns Adam parameter groups.
+    learning_rates: {stage: lr}, stages from ResNet18.STAGES. Frozen: {"fc": 1e-3}; fine-tuned: {"layer4": 1e-5, "fc": 1e-4}."""
+    for p in model.parameters():
+        p.requires_grad = False
+    groups = []
+    for name, lr in learning_rates.items():
+        params = list(model.stage(name).parameters())
+        for p in params:
+            p.requires_grad = True
+        groups.append(dict(params=params, lr=lr, name=name))
+    return groups
 
 
-def assert_model_contract(model, stage):
-    if stage not in STAGES or not isinstance(model.fc, nn.Linear) or model.fc.in_features != 512 or model.fc.out_features != 5 or model.fc.bias is None:
-        raise ValueError('Expected a ResNet-18 with a biased 512-to-5 linear head')
-    if any(len(getattr(model, f'layer{i}')) != 2 for i in range(1, 5)):
-        raise ValueError('Expected two residual blocks in each ResNet-18 stage')
-    for name, parameter in model.named_parameters():
-        expected = name.startswith('fc.') or (stage == 'finetuned' and name.startswith('layer4.'))
-        if parameter.requires_grad != expected:
-            raise ValueError(f'Unexpected trainable/frozen parameter: {name}')
-    for name, child in model.named_children():
-        if name != 'fc' and not (stage == 'finetuned' and name == 'layer4') and child.training:
-            raise ValueError(f'Frozen backbone stage is in training mode: {name}')
-    for name, module in model.named_modules():
-        if isinstance(module, nn.modules.batchnorm._BatchNorm):
-            if module.training or not module.track_running_stats or module.running_mean is None or module.running_var is None:
-                raise ValueError(f'BatchNorm running statistics are not fixed: {name}')
-    return dict(trainable_parameters=sum(p.numel() for p in model.parameters() if p.requires_grad),
-                trainable_names=[n for n, p in model.named_parameters() if p.requires_grad])
+def count_parameters(model):
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return dict(total=total, trainable=trainable)
 
 
-def make_optimizer(model, stage):
-    assert_model_contract(model, stage)
-    groups = [dict(params=list(model.fc.parameters()), lr=1e-3)] if stage == 'frozen' else [
-        dict(params=list(model.layer4.parameters()), lr=1e-5),
-        dict(params=list(model.fc.parameters()), lr=1e-4)]
-    return torch.optim.Adam(groups, betas=(.9, .999), eps=1e-8, weight_decay=0.)
+# ============================================================================================
+# Checkpoints and selection
+# ============================================================================================
+def save_checkpoint(path, model, **meta):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(dict(state_dict=model.state_dict(), class_mapping=CLASSES, meta=meta), path)
+    return path
 
 
-def assert_optimizer_contract(model, optimizer, stage):
-    if not isinstance(optimizer, torch.optim.Adam):
-        raise ValueError('The agreed optimiser is Adam')
-    expected = [(set(map(id, model.fc.parameters())), 1e-3)] if stage == 'frozen' else [
-        (set(map(id, model.layer4.parameters())), 1e-5), (set(map(id, model.fc.parameters())), 1e-4)]
-    actual = optimizer.param_groups
-    if len(actual) != len(expected):
-        raise ValueError('Incorrect optimiser parameter groups')
-    for group in actual:
-        ids = [id(parameter) for parameter in group['params']]
-        if len(ids) != len(set(ids)) or not any(set(ids) == params and group['lr'] == lr for params, lr in expected):
-            raise ValueError('Optimiser parameters or learning rates disagree with the stage')
-        if group['weight_decay'] != 0 or group['betas'] != (.9, .999) or group['eps'] != 1e-8:
-            raise ValueError('Record a deliberate change before changing the common Adam settings')
+def load_checkpoint(path, model=None, device="cpu"):
+    """Returns (model, meta). Refuses checkpoints saved with a different disease-ID mapping."""
+    ckpt = torch.load(path, map_location=device, weights_only=True)
+    if ckpt.get("class_mapping") != CLASSES:
+        raise ValueError(f"{path} uses class mapping {ckpt.get('class_mapping')}, expected {CLASSES}")
+    model = model or ResNet18(NUM_CLASSES)
+    model.load_state_dict(ckpt["state_dict"])
+    return model.to(device), ckpt.get("meta", {})
 
 
-def run_configuration(model, optimizer, data, stage, device):
-    """JSON-ready settings; add the actual epoch/batch overrides used by a run."""
-    contract = assert_model_contract(model, stage)
-    assert_optimizer_contract(model, optimizer, stage)
-    if stage == 'finetuned' and not getattr(model, 'rice_frozen_checkpoint_sha256', None):
-        raise ValueError('Initialise fine-tuning from the same-split frozen checkpoint first')
-    names = {id(parameter): name for name, parameter in model.named_parameters()}
-    return dict(method=METHODS[stage], stage=stage, context=_plain(data.context),
-        planned_defaults=_plain(STAGE_DEFAULTS[stage]), device=str(device),
-        python=platform.python_version(), torch=str(torch.__version__),
-        torchvision=torchvision.__version__, numpy=np.__version__, pillow=PIL.__version__,
-        weights_source=getattr(model, 'rice_weights_source', 'UNKNOWN'),
-        frozen_source_sha256=getattr(model, 'rice_frozen_checkpoint_sha256', None),
-        frozen_source_epoch=getattr(model, 'rice_frozen_epoch', None),
-        common_code_sha256=sha_file(Path(__file__)), **contract,
-        optimizer='Adam', optimizer_groups=[dict(lr=group['lr'], betas=list(group['betas']),
-            eps=group['eps'], weight_decay=group['weight_decay'],
-            parameter_names=[names[id(p)] for p in group['params']]) for group in optimizer.param_groups])
+class BestTracker:
+    """Agreed rule: highest validation macro-F1; exact ties keep the lower validation loss;
+    stop after `patience` consecutive epochs without improvement."""
+
+    def __init__(self, patience=PATIENCE):
+        self.patience, self.best_f1, self.best_loss, self.best_epoch, self.stale = patience, -1.0, math.inf, 0, 0
+
+    def update(self, val_f1, val_loss, epoch):
+        """True when this epoch is the new best (save the checkpoint then)."""
+        if val_f1 > self.best_f1 or (val_f1 == self.best_f1 and val_loss < self.best_loss):
+            self.best_f1, self.best_loss, self.best_epoch, self.stale = val_f1, val_loss, epoch, 0
+            return True
+        self.stale += 1
+        return False
+
+    @property
+    def should_stop(self):
+        return self.stale >= self.patience
 
 
-def dataset_rows(dataset):
-    if isinstance(dataset, Subset):
-        rows = dataset_rows(dataset.dataset)
-        return [rows[index] for index in dataset.indices]
-    if not hasattr(dataset, 'rows'):
-        raise ValueError('Use RiceDataset or a Subset of it to retain image metadata')
-    return dataset.rows
+# ============================================================================================
+# Prediction, export and scoring (group handover format)
+# ============================================================================================
+def macro_f1(y_true, y_pred):
+    return float(f1_score(y_true, y_pred, average="macro", labels=list(range(NUM_CLASSES)), zero_division=0))
 
 
-def _logits(model, images):
-    logits = model(images)
-    if logits.shape != (len(images), 5) or not torch.isfinite(logits).all():
-        raise ValueError('Model must return finite B-by-5 logits, without a final softmax')
-    return logits
-
-
-def _epoch_result(loss_sum, truth, predicted):
-    if not truth:
-        raise ValueError('Empty data loader')
-    return dict(loss=loss_sum / len(truth), images=len(truth),
-                accuracy=float(accuracy_score(truth, predicted)),
-                macro_f1=float(f1_score(truth, predicted, labels=list(range(5)),
-                                        average='macro', zero_division=0)))
-
-
-def train_one_epoch(model, loader, optimizer, device, stage):
-    if any(row['partition'] != 'train' for row in dataset_rows(loader.dataset)):
-        raise ValueError('Training requires the training partition')
-    prepare_training_mode(model, stage)
-    assert_model_contract(model, stage)
-    assert_optimizer_contract(model, optimizer, stage)
-    total, truth, predicted = 0., [], []
-    for batch in loader:
-        images, labels = batch['image'].to(device), batch['disease_id'].to(device)
-        optimizer.zero_grad(set_to_none=True)
-        logits = _logits(model, images)
-        loss = nn.functional.cross_entropy(logits, labels)
-        if not torch.isfinite(loss):
-            raise ValueError('Non-finite training loss')
-        loss.backward()
-        optimizer.step()
-        total += float(loss.detach().cpu()) * len(labels)
-        truth.extend(labels.detach().cpu().tolist())
-        predicted.extend(logits.detach().argmax(1).cpu().tolist())
-    return _epoch_result(total, truth, predicted)
-
-
-def evaluate(model, loader, device):
+@torch.no_grad()
+def predict(model, loader, device="cpu"):
+    """Per-image predictions keyed by image_id (safe with shuffled loaders), plus loss, accuracy, macro-F1."""
     model.eval()
-    total, truth, predicted = 0., [], []
-    with torch.inference_mode():
-        for batch in loader:
-            images, labels = batch['image'].to(device), batch['disease_id'].to(device)
-            logits = _logits(model, images)
-            total += float(nn.functional.cross_entropy(logits, labels).cpu()) * len(labels)
-            truth.extend(labels.cpu().tolist())
-            predicted.extend(logits.argmax(1).cpu().tolist())
-    return _epoch_result(total, truth, predicted)
+    rows, loss_sum = [], 0.0
+    for batch in loader:
+        y = batch["disease_id"].to(device)
+        logits = model(batch["image"].to(device))
+        loss_sum += F.cross_entropy(logits, y, reduction="sum").item()
+        probs = F.softmax(logits, 1).cpu().numpy()
+        for iid, t, b, p in zip(batch["image_id"], batch["disease_id"].tolist(), batch["background_id"].tolist(), probs):
+            rows.append(dict(image_id=iid, disease_id=int(t), predicted_disease_id=int(p.argmax()),
+                             background_id=int(b), probs=p))
+    y_true = [r["disease_id"] for r in rows]
+    y_pred = [r["predicted_disease_id"] for r in rows]
+    return dict(rows=rows, loss=loss_sum / len(rows), accuracy=float(accuracy_score(y_true, y_pred)),
+                macro_f1=macro_f1(y_true, y_pred))
 
 
-def _plain(value):
-    return json.loads(json.dumps(value))
+def check_predictions(rows, dataset):
+    """Every manifest image predicted exactly once, nothing extra, true labels/backgrounds match the manifest."""
+    manifest = {r["image_id"]: r for r in dataset.rows}
+    ids = [r["image_id"] for r in rows]
+    repeated = {i for i in ids if ids.count(i) > 1}
+    missing, extra = set(manifest) - set(ids), set(ids) - set(manifest)
+    wrong = [r["image_id"] for r in rows if r["image_id"] in manifest and (
+        r["disease_id"] != int(manifest[r["image_id"]]["disease_id"]) or
+        r["background_id"] != int(manifest[r["image_id"]]["background_id"]))]
+    if repeated or missing or extra or wrong:
+        raise ValueError(f"Prediction check failed: {len(missing)} missing, {len(repeated)} repeated, "
+                         f"{len(extra)} outside the manifest, {len(wrong)} label/background mismatches")
+    return True
 
 
-def _cpu(value):
-    if isinstance(value, torch.Tensor):
-        return value.detach().cpu()
-    if isinstance(value, dict):
-        return {key: _cpu(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_cpu(item) for item in value]
-    if isinstance(value, tuple):
-        return tuple(_cpu(item) for item in value)
-    return value
+def write_predictions(path, rows, seed, method):
+    """Group format: image_id,seed,method,disease_id,predicted_disease_id,background_id,prob_0..prob_4.
+    Rows are sorted by image_id; results are matched on image_id, never on row order."""
+    out = [dict(image_id=r["image_id"], seed=seed, method=method, disease_id=r["disease_id"],
+                predicted_disease_id=r["predicted_disease_id"], background_id=r["background_id"],
+                **{f"prob_{k}": f"{r['probs'][k]:.6f}" for k in range(NUM_CLASSES)})
+           for r in sorted(rows, key=lambda r: r["image_id"])]
+    write_csv(path, out)
+    return path
 
 
-def read_checkpoint(path, context, required_stage):
-    payload = torch.load(path, map_location='cpu', weights_only=True)
-    if payload.get('format_version') != 1 or payload.get('stage') != required_stage:
-        raise ValueError('Checkpoint stage or format mismatch')
-    if payload.get('context') != _plain(context):
-        raise ValueError('Checkpoint seed, manifests, preprocessing policy or run scope mismatch')
-    return payload
-
-
-def load_checkpoint(path, model, context, required_stage, optimizer=None):
-    payload = read_checkpoint(path, context, required_stage)
-    model.load_state_dict(payload['model_state'], strict=True)
-    model.rice_weights_source = payload['weights_source']
-    model.rice_checkpoint_context = _plain(context)
-    model.rice_checkpoint_stage = required_stage
-    model.rice_frozen_checkpoint_sha256 = payload.get('frozen_source_sha256')
-    model.rice_frozen_epoch = payload.get('frozen_source_epoch')
-    if optimizer is not None:
-        optimizer.load_state_dict(payload['optimizer_state'])
-    return payload
-
-
-class BestCheckpoint:
-    """Independent validation-macro-F1 selection; ties count as no improvement."""
-    def __init__(self, path, context, stage, patience=5):
-        self.path, self.context, self.stage = Path(path), _plain(context), stage
-        if self.path.exists() or stage not in STAGES or patience < 1:
-            raise ValueError('Use a new checkpoint path, a valid stage and positive patience')
-        self.patience, self.best_score, self.bad_epochs, self.best_epoch = patience, -math.inf, 0, None
-
-    def update(self, score, epoch, model, optimizer, config=None):
-        score = float(score)
-        if not math.isfinite(score) or not 0 <= score <= 1:
-            raise ValueError('Validation macro-F1 must be finite and between zero and one')
-        if self.stage == 'finetuned' and not getattr(model, 'rice_frozen_checkpoint_sha256', None):
-            raise ValueError('Fine-tuned checkpoints require same-split frozen-checkpoint initialisation')
-        assert_model_contract(model, self.stage)
-        assert_optimizer_contract(model, optimizer, self.stage)
-        if score > self.best_score:
-            payload = dict(format_version=1, stage=self.stage, context=self.context,
-                epoch=int(epoch), validation_macro_f1=score, model_state=_cpu(model.state_dict()),
-                optimizer_state=_cpu(optimizer.state_dict()), config=_plain(config or {}),
-                weights_source=getattr(model, 'rice_weights_source', 'UNKNOWN'),
-                frozen_source_sha256=getattr(model, 'rice_frozen_checkpoint_sha256', None),
-                frozen_source_epoch=getattr(model, 'rice_frozen_epoch', None),
-                torch_version=str(torch.__version__))
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            temporary = self.path.with_suffix(self.path.suffix + '.tmp')
-            torch.save(payload, temporary)
-            os.replace(temporary, self.path)
-            self.best_score, self.best_epoch, self.bad_epochs = score, epoch, 0
-        else:
-            self.bad_epochs += 1
-        return self.bad_epochs >= self.patience
-
-
-def initialise_finetuned(frozen_checkpoint, context, device):
-    model = build_model('finetuned', pretrained=False)
-    payload = load_checkpoint(frozen_checkpoint, model, context, required_stage='frozen')
-    model.rice_frozen_checkpoint_sha256 = sha_file(Path(frozen_checkpoint))
-    model.rice_frozen_epoch = payload['epoch']
-    configure_trainable(model, 'finetuned')
-    return model.to(device), payload
-
-
-def score_predictions(rows):
+def get_scores(rows):
+    """metrics.json content, same layout as the SVM baseline: field, white and all test images, each computed
+    from its own predictions (combined macro-F1 is not an average of the two)."""
+    y = np.array([r["disease_id"] for r in rows])
+    p = np.array([r["predicted_disease_id"] for r in rows])
+    bg = np.array([r["background_id"] for r in rows])
     scores = {}
-    for scenario in ('field', 'white', 'all'):
-        selected = rows if scenario == 'all' else [r for r in rows if r['background_id'] == BACKGROUNDS[scenario]]
-        if not selected:
-            raise ValueError(f'No predictions for background scenario {scenario}')
-        truth = [r['disease_id'] for r in selected]
-        predicted = [r['predicted_disease_id'] for r in selected]
-        scores[scenario] = dict(images=len(selected), accuracy=float(accuracy_score(truth, predicted)),
-            macro_f1=float(f1_score(truth, predicted, labels=list(range(5)), average='macro', zero_division=0)),
-            confusion_matrix=confusion_matrix(truth, predicted, labels=list(range(5))).tolist())
+    for name in ("field", "white", "all"):
+        mask = np.ones(len(y), bool) if name == "all" else bg == BACKGROUNDS[name]
+        if not mask.any():
+            raise ValueError(f"No test images for scenario {name}")
+        scores[name] = dict(
+            images=int(mask.sum()), accuracy=float(accuracy_score(y[mask], p[mask])), macro_f1=macro_f1(y[mask], p[mask]),
+            per_class_f1=f1_score(y[mask], p[mask], average=None, labels=list(range(NUM_CLASSES)), zero_division=0).tolist(),
+            confusion_matrix=confusion_matrix(y[mask], p[mask], labels=list(range(NUM_CLASSES))).tolist())
     return scores
 
 
-def summarise_runs(scores_by_seed):
-    if set(scores_by_seed) != set(SEEDS):
-        raise ValueError('Five-run summaries require seeds 11, 22, 33, 44 and 55')
-    result = []
-    for scenario in ('field', 'white', 'all'):
-        row = dict(scenario=scenario, runs=5)
-        for metric in ('accuracy', 'macro_f1'):
-            values = [scores_by_seed[seed][scenario][metric] for seed in SEEDS]
-            if not np.isfinite(values).all():
-                raise ValueError('Non-finite run metrics')
-            row[metric + '_mean'] = float(np.mean(values))
-            row[metric + '_std'] = float(np.std(values, ddof=1))
-        result.append(row)
-    return result
+def summary_rows(results):
+    """Mean and sample standard deviation (ddof=1) over runs, per scenario (same layout as the SVM summary)."""
+    rows = []
+    for scenario in ("field", "white", "all"):
+        acc = [r[scenario]["accuracy"] for r in results]
+        f1 = [r[scenario]["macro_f1"] for r in results]
+        rows.append(dict(scenario=scenario, runs=len(results), accuracy_mean=float(np.mean(acc)),
+                         accuracy_std=float(np.std(acc, ddof=1)) if len(acc) > 1 else "",
+                         macro_f1_mean=float(np.mean(f1)),
+                         macro_f1_std=float(np.std(f1, ddof=1)) if len(f1) > 1 else ""))
+    return rows
 
 
-def export_predictions(model, loader, path, context, stage, device):
-    if stage not in STAGES:
-        raise ValueError('Invalid model stage')
-    path = Path(path)
-    if path.exists() or path.with_suffix('.metadata.json').exists():
-        raise ValueError('Prediction output exists; choose a new path')
-    rows = dataset_rows(loader.dataset)
-    if any(int(row['seed']) != context['seed'] for row in rows):
-        raise ValueError('Prediction loader seed disagrees with the run context')
-    partitions = {r['partition'] for r in rows}
-    if len(partitions) != 1 or partitions == {'train'}:
-        raise ValueError('Export predictions for a single validation or test partition')
-    if 'test' in partitions and context['run_scope'] != 'experiment':
-        raise ValueError('Implementation-check runs must not export test predictions')
-    if getattr(model, 'rice_checkpoint_context', None) != _plain(context) or getattr(model, 'rice_checkpoint_stage', None) != stage:
-        raise ValueError('Load the selected checkpoint for this context and stage before exporting predictions')
-    expected = {row['image_id']: row for row in rows}
-    if len(expected) != len(rows):
-        raise ValueError('Repeated image IDs in prediction dataset')
-    collected = {}
-    model.eval()
-    with torch.inference_mode():
-        for batch in loader:
-            probabilities = _logits(model, batch['image'].to(device)).softmax(1).cpu()
-            for i, image_id in enumerate(batch['image_id']):
-                if image_id not in expected or image_id in collected:
-                    raise ValueError('Unexpected or repeated prediction image ID')
-                source = expected[image_id]
-                label, background = int(batch['disease_id'][i]), int(batch['background_id'][i])
-                if (label, background) != (int(source['disease_id']), int(source['background_id'])):
-                    raise ValueError('Prediction metadata disagrees with the manifest')
-                probability = probabilities[i].tolist()
-                collected[image_id] = dict(image_id=image_id, seed=context['seed'], method=METHODS[stage],
-                    disease_id=label, predicted_disease_id=int(probabilities[i].argmax()), background_id=background,
-                    **{f'prob_{index}': float(value) for index, value in enumerate(probability)})
-    if set(collected) != set(expected):
-        raise ValueError('Missing image predictions')
-    predictions = [collected[row['image_id']] for row in rows]
-    path.parent.mkdir(parents=True, exist_ok=True)
-    write_csv(path, predictions)
-    write_json(path.with_suffix('.metadata.json'), dict(context=_plain(context), stage=stage,
-        partition=next(iter(partitions)), images=len(predictions), weights_source=getattr(model, 'rice_weights_source', 'UNKNOWN')))
-    return predictions
+# ============================================================================================
+# Run records
+# ============================================================================================
+def new_run_dir(root, method, seed, overwrite=False):
+    """Dhan-Shomadhan/experiments/<method>/seed_<seed>/ (refuses to overwrite an existing run by default)."""
+    if method not in METHODS and not method.startswith("resnet18_checks"):
+        raise ValueError(f"method must be one of {METHODS}")
+    directory = Path(root).resolve() / "experiments" / method / f"seed_{seed}"
+    if directory.exists() and not overwrite:
+        raise ValueError(f"{directory} already exists; choose another output or pass overwrite=True")
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def base_run_config(method, seed, version, datasets, device, root=DATASET, audit=AUDIT, **extra):
+    """Fields every CNN run_config.json needs; each variant adds its own settings through **extra."""
+    return dict(method=method, seed=seed, model_seed=seed, manifest_version=manifest_version_name(version, audit),
+                manifest_sha256={p: sha_file(Path(version) / f"seed_{seed}" / f"{p}.csv") for p in PARTITIONS},
+                common_code_sha256=sha_file(Path(__file__)), transforms=transform_settings(datasets),
+                weights=weights_record(root), batch_size=BATCH_SIZE, selection_rule=SELECTION_RULE,
+                batchnorm="running statistics fixed at ImageNet values (kept in eval mode during training)",
+                class_mapping=CLASSES, background_mapping=BACKGROUNDS, environment=environment(device), **extra)
+
+
+def write_history(path, rows):
+    write_csv(path, rows)
+
+
+__all__ = [n for n in dir() if not n.startswith("_")]

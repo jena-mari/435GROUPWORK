@@ -1,6 +1,10 @@
-"""Role 5 frozen ResNet-18 experiment, integrated with the shared CNN helpers.
+"""Train the frozen-backbone ResNet-18 experiment (Person 5, CSCI435).
 
-Adapted from the group-supplied train_frozen.py. Run from the repository root.
+Run from the repository root:
+    python -m resnet18.train_frozen
+
+The script uses the project's current shared manifests and never uses test data
+for optimisation, hyperparameter selection, or checkpoint selection.
 """
 from __future__ import annotations
 
@@ -9,138 +13,149 @@ import json
 import time
 from pathlib import Path
 
-from data_preprocessing.prepare_dataset import SEEDS, sha_file, write_csv, write_json
-from data_preprocessing.verify_dataset import verify
-from . import common as cc
-from .validate_implementation import check_changes, small_loader, snapshot
+import numpy as np
+import torch
+import torch.nn.functional as F
 
-METHOD = 'frozen_resnet18'
-AUDIT = Path(__file__).resolve().parents[1] / 'Dhan-Shomadhan/preprocessing'
+from resnet18 import common as cc
+
+METHOD = "frozen_resnet18"
+DEFAULT_SEEDS = (11, 22, 33, 44, 55)
+
+
+def train_epoch(model, loader, optimiser, device):
+    model.train()  # ResNet18.train() keeps BatchNorm running statistics frozen.
+    total_loss = 0.0
+    total = 0
+    correct = 0
+    for batch in loader:
+        images = batch["image"].to(device, non_blocking=True)
+        labels = batch["disease_id"].to(device, non_blocking=True)
+        optimiser.zero_grad(set_to_none=True)
+        logits = model(images)
+        loss = F.cross_entropy(logits, labels)
+        loss.backward()
+        optimiser.step()
+        n = labels.size(0)
+        total_loss += loss.item() * n
+        total += n
+        correct += (logits.argmax(dim=1) == labels).sum().item()
+    return {"train_loss": total_loss / max(total, 1), "train_accuracy": correct / max(total, 1)}
+
+
+def _json_write(path: Path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
 
 
 def run_seed(seed, args, device):
-    cc.seed_everything(seed)
-    root, output = args.dataset.resolve(), args.output.resolve()
-    directory = output / f'seed_{seed}'
-    data = cc.make_shared_data(root, args.audit, seed, batch_size=args.batch_size,
-                               num_workers=args.workers)
-    training, validation = data.loaders['train'], data.loaders['validation']
-    if args.smoke:
-        training = small_loader(data.datasets['train'], seed, 1, args.batch_size, True)
-        validation = small_loader(data.datasets['validation'], seed + 1000, 1, args.batch_size, False)
-        data.context.update(run_scope='implementation_check', check_image_ids={
-            part: [r['image_id'] for r in cc.dataset_rows(loader.dataset)]
-            for part, loader in [('train', training), ('validation', validation)]})
-    checkpoint = directory / 'best.pt'
-    if args.evaluate_only:
-        config = json.loads((directory / 'run_config.json').read_text())
-        if config['context'] != data.context or not config.get('training_complete'):
-            raise ValueError('Evaluation requires a completed training run with the same context')
-        if config.get('method') != METHOD or config.get('smoke'):
-            raise ValueError('Choose a completed full-data frozen experiment')
-        model = cc.build_model('frozen', pretrained=False).to(device)
-        payload = cc.load_checkpoint(checkpoint, model, data.context, 'frozen')
-        if sha_file(checkpoint) != config.get('checkpoint_sha256') or payload['epoch'] != config.get('best_epoch'):
-            raise ValueError('Selected checkpoint differs from the completed run record')
-        if payload['weights_source'] != 'IMAGENET1K_V1':
-            raise ValueError('The frozen experiment requires ImageNet-pretrained weights')
-    else:
-        directory.mkdir(parents=True, exist_ok=False)
-        model = cc.build_model('frozen', cache_dir=root / 'model_cache/torchvision',
-                               weights_path=args.weights_path).to(device)
-        optimizer = cc.make_optimizer(model, 'frozen')
-        config = cc.run_configuration(model, optimizer, data, 'frozen', device)
-        config.update(actual_batch_size=args.batch_size, actual_max_epochs=args.epochs,
-            actual_patience=args.patience, workers=args.workers, smoke=args.smoke,
-            training_images=len(training.dataset), validation_images=len(validation.dataset),
-            dataset_root=str(root), audit_directory=str(args.audit.resolve()),
-            driver_code_sha256=sha_file(Path(__file__)), checkpoint='best.pt',
-            selection_rule='strictly highest validation macro-F1; ties count as no improvement',
-            validation_only=args.validation_only, training_complete=False)
-        write_json(directory / 'run_config.json', config)
-        selector = cc.BestCheckpoint(checkpoint, data.context, 'frozen', args.patience)
-        before = snapshot(model)  # Verify the complete frozen backbone, including BN buffers.
-        history, started = [], time.monotonic()
-        for epoch in range(1, args.epochs + 1):
-            train = cc.train_one_epoch(model, training, optimizer, device, 'frozen')
-            val = cc.evaluate(model, validation, device)
-            history.append(dict(epoch=epoch, training_loss=train['loss'],
-                training_accuracy=train['accuracy'], validation_loss=val['loss'],
-                validation_accuracy=val['accuracy'], validation_macro_f1=val['macro_f1']))
-            stop = selector.update(val['macro_f1'], epoch, model, optimizer, config)
-            write_csv(directory / 'validation_history.csv', history)
-            print(f"seed {seed} epoch {epoch}: train loss {train['loss']:.4f}, "
-                  f"validation macro-F1 {val['macro_f1']:.4f}, best epoch {selector.best_epoch}", flush=True)
-            if stop:
-                break
-        changes = check_changes(model, before, 'frozen')
-        config.update(training_complete=True, epochs_completed=len(history),
-            best_epoch=selector.best_epoch, best_validation_macro_f1=selector.best_score,
-            elapsed_training_seconds=time.monotonic() - started, frozen_contract_check=changes,
-            checkpoint_sha256=sha_file(checkpoint))
-        write_json(directory / 'run_config.json', config)
-        cc.load_checkpoint(checkpoint, model, data.context, 'frozen')
-        rows = cc.export_predictions(model, validation, directory / 'validation_predictions.csv',
-                                     data.context, 'frozen', device)
-        write_json(directory / 'validation_metrics.json', cc.score_predictions(rows))
-    if args.validation_only:
-        print(f'Validation only: {directory}; test images evaluated: 0', flush=True)
-        return None
-    rows = cc.export_predictions(model, data.loaders['test'], directory / 'test_predictions.csv',
-                                 data.context, 'frozen', device)
-    scores = cc.score_predictions(rows)
-    write_json(directory / 'metrics.json', scores)
-    write_json(directory / 'test_evaluation.json', dict(checkpoint_sha256=sha_file(checkpoint),
-        evaluation_device=str(device), context=data.context, images=len(rows)))
-    print(f'Saved selected-checkpoint test predictions: {directory}', flush=True)
-    return scores
+    cc.set_seed(seed)
+    dataset_root = Path(args.dataset)
+    audit_root = Path(args.audit) if args.audit else cc.AUDIT
+    datasets, version = cc.load_shared_splits(
+        root=dataset_root, audit=audit_root, seed=seed, resize_mode=args.resize_mode
+    )
+    train_loader = cc.make_loader(datasets["train"], train=True, seed=seed,
+                                  batch_size=args.batch_size, workers=args.workers)
+    val_loader = cc.make_loader(datasets["validation"], train=False, seed=seed,
+                                batch_size=args.batch_size, workers=args.workers)
+    test_loader = cc.make_loader(datasets["test"], train=False, seed=seed,
+                                 batch_size=args.batch_size, workers=args.workers)
+
+    run_dir = cc.new_run_dir(dataset_root, METHOD, seed, overwrite=args.overwrite)
+    model = cc.build_resnet18(dataset_root, pretrained=True).to(device)
+    parameter_groups = cc.set_trainable(model, {"fc": args.learning_rate})
+    params = cc.count_parameters(model)
+    if params["trainable"] != sum(p.numel() for p in model.fc.parameters()):
+        raise RuntimeError("Frozen experiment has trainable backbone parameters")
+    optimiser = torch.optim.Adam(parameter_groups)
+    tracker = cc.BestTracker(patience=args.patience)
+    history = []
+    checkpoint_path = run_dir / "best_checkpoint.pt"
+    start = time.time()
+
+    print(f"\n[{METHOD}] seed={seed}, device={device}, trainable={params['trainable']:,}/{params['total']:,}")
+    for epoch in range(1, args.epochs + 1):
+        train_stats = train_epoch(model, train_loader, optimiser, device)
+        val_stats = cc.predict(model, val_loader, device)
+        row = {"epoch": epoch, **train_stats,
+               "validation_loss": val_stats["loss"],
+               "validation_accuracy": val_stats["accuracy"],
+               "validation_macro_f1": val_stats["macro_f1"]}
+        history.append(row)
+        improved = tracker.update(val_stats["macro_f1"], val_stats["loss"], epoch)
+        if improved:
+            cc.save_checkpoint(checkpoint_path, model, method=METHOD, seed=seed, epoch=epoch,
+                               validation_macro_f1=val_stats["macro_f1"],
+                               validation_loss=val_stats["loss"], learning_rate=args.learning_rate,
+                               resize_mode=args.resize_mode, trainable_parameters=params["trainable"])
+        print(f"seed {seed} epoch {epoch:02d}/{args.epochs}: "
+              f"train_loss={train_stats['train_loss']:.4f} "
+              f"val_macro_f1={val_stats['macro_f1']:.4f} "
+              f"{'[best]' if improved else ''}")
+        if tracker.should_stop:
+            print(f"Early stopping after {args.patience} epochs without improvement.")
+            break
+
+    cc.write_history(run_dir / "training_history.csv", history)
+    model, checkpoint_meta = cc.load_checkpoint(checkpoint_path, model=model, device=device)
+    test_stats = cc.predict(model, test_loader, device)
+    cc.check_predictions(test_stats["rows"], datasets["test"])
+    cc.write_predictions(run_dir / "test_predictions.csv", test_stats["rows"], seed, METHOD)
+    metrics = cc.get_scores(test_stats["rows"])
+    _json_write(run_dir / "metrics.json", {
+        "method": METHOD, "seed": seed, "best_epoch": tracker.best_epoch,
+        "best_validation_macro_f1": tracker.best_f1,
+        "best_validation_loss": tracker.best_loss,
+        "test_loss": test_stats["loss"], "test_accuracy": test_stats["accuracy"],
+        "test_macro_f1": test_stats["macro_f1"], "scenarios": metrics,
+        "elapsed_seconds": round(time.time() - start, 2),
+    })
+    config = cc.base_run_config(
+        METHOD, seed, version, datasets, device, root=dataset_root, audit=audit_root,
+        epochs_requested=args.epochs, epochs_completed=len(history), learning_rate=args.learning_rate,
+        optimiser="Adam", trainable_stages={"fc": args.learning_rate},
+        parameter_counts=params, patience=args.patience, resize_mode=args.resize_mode,
+        checkpoint=str(checkpoint_path), best_epoch=tracker.best_epoch,
+        best_validation_macro_f1=tracker.best_f1, workers=args.workers,
+    )
+    _json_write(run_dir / "run_config.json", config)
+    print(f"seed {seed} TEST: accuracy={test_stats['accuracy']:.4f}, "
+          f"macro-F1={test_stats['macro_f1']:.4f}; outputs: {run_dir}")
+    return metrics
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dataset', type=Path, default=Path('Dhan-Shomadhan'))
-    parser.add_argument('--audit', type=Path, default=AUDIT)
-    parser.add_argument('--output', type=Path)
-    parser.add_argument('--seeds', nargs='+', type=int, choices=SEEDS, default=list(SEEDS))
-    parser.add_argument('--epochs', type=int, default=30)
-    parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--patience', type=int, default=5)
-    parser.add_argument('--workers', type=int, default=0)
-    parser.add_argument('--device', choices=('auto', 'cpu', 'mps', 'cuda'), default='auto')
-    parser.add_argument('--weights-path', type=Path, help='Optional official ImageNet weights for offline loading')
-    parser.add_argument('--validation-only', action='store_true', help='Train/select/export validation predictions; do not evaluate test')
-    parser.add_argument('--evaluate-only', action='store_true', help='Export test predictions from completed validation-only runs')
-    parser.add_argument('--smoke', action='store_true', help='10 train/10 validation images; diagnostic checkpoints; no test evaluation')
+    parser.add_argument("--dataset", default=str(cc.DATASET), help="dataset root containing the source image folders")
+    parser.add_argument("--audit", default=None, help="shared preprocessing audit directory (defaults to project audit)")
+    parser.add_argument("--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS), choices=DEFAULT_SEEDS)
+    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--batch-size", type=int, default=cc.BATCH_SIZE)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--patience", type=int, default=cc.PATIENCE)
+    parser.add_argument("--workers", type=int, default=0)
+    parser.add_argument("--resize-mode", choices=tuple(cc.RESIZE_MODES), default=cc.RESIZE_MODE)
+    parser.add_argument("--cpu", action="store_true", help="force CPU even if an accelerator is available")
+    parser.add_argument("--overwrite", action="store_true", help="replace outputs for selected seeds")
     args = parser.parse_args(argv)
-    if len(args.seeds) != len(set(args.seeds)) or min(args.epochs, args.batch_size, args.patience) < 1 or args.workers < 0:
-        parser.error('Use distinct seeds and positive epoch/batch/patience values; workers must be non-negative')
-    if args.evaluate_only and (args.validation_only or args.smoke):
-        parser.error('--evaluate-only cannot be combined with --validation-only or --smoke')
-    if args.smoke:
-        if args.epochs > 3:
-            parser.error('For --smoke specify --epochs 1, 2 or 3')
-        args.validation_only = True
-    args.output = args.output or args.dataset / 'experiments' / ('resnet18_checks/frozen_smoke' if args.smoke else METHOD)
-    if not args.output.resolve().is_relative_to(args.dataset.resolve()):
-        parser.error('Save experiment outputs under the main dataset directory')
+    if args.epochs < 1 or args.batch_size < 1 or args.learning_rate <= 0 or args.patience < 1:
+        parser.error("epochs, batch-size, patience must be positive and learning-rate must be > 0")
+
+    device = cc.get_device(force_cpu=args.cpu)
+    results = []
     for seed in args.seeds:
-        directory = args.output / f'seed_{seed}'
-        if args.evaluate_only:
-            if not (directory / 'best.pt').is_file() or not (directory / 'run_config.json').is_file():
-                parser.error(f'No completed checkpoint/configuration: {directory}')
-            if any((directory / name).exists() for name in ('test_predictions.csv', 'test_predictions.metadata.json', 'metrics.json', 'test_evaluation.json')):
-                parser.error(f'Test outputs already exist: {directory}')
-        elif directory.exists():
-            parser.error(f'Run directory exists; choose another --output: {directory}')
-    verify(args.dataset, args.audit)
-    device = cc.choose_device(args.device)
-    results = {seed: run_seed(seed, args, device) for seed in args.seeds}
-    if not args.validation_only:
-        if set(results) == set(SEEDS):
-            write_csv(args.output / 'summary.csv', cc.summarise_runs(results))
-        else:
-            print('Partial invocation: no five-run summary. Use the evaluation package once all five seeds are ready.')
+        results.append(run_seed(seed, args, device))
+
+    summary = cc.summary_rows(results)
+    summary_path = Path(args.dataset).resolve() / "experiments" / METHOD / "summary.csv"
+    cc.write_history(summary_path, summary)
+    print("\nMean and sample standard deviation across completed runs:")
+    for row in summary:
+        print(f"{row['scenario']:>5}: accuracy={row['accuracy_mean']:.4f} ± {row['accuracy_std']:.4f}; "
+              f"macro-F1={row['macro_f1_mean']:.4f} ± {row['macro_f1_std']:.4f}")
+    print(f"Summary saved to {summary_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

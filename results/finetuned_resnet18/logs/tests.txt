@@ -1,0 +1,20 @@
+test_batchnorm_statistics_fixed_after_train (resnet18.tests.test_common.ModelTests.test_batchnorm_statistics_fixed_after_train) ... ok
+test_checkpoint_round_trip (resnet18.tests.test_common.ModelTests.test_checkpoint_round_trip) ... ok
+test_selection_rule (resnet18.tests.test_common.ModelTests.test_selection_rule) ... ok
+test_trainable_counts (resnet18.tests.test_common.ModelTests.test_trainable_counts) ... ok
+test_prediction_export (resnet18.tests.test_common.SharedSplitTests.test_prediction_export) ... ok
+test_seed_sizes (resnet18.tests.test_common.SharedSplitTests.test_seed_sizes) ... ok
+test_eval_sizes_and_determinism (resnet18.tests.test_common.TransformTests.test_eval_sizes_and_determinism) ... ok
+test_landscape_turned_upright (resnet18.tests.test_common.TransformTests.test_landscape_turned_upright) ... ok
+test_training_augmentation_reproducible (resnet18.tests.test_common.TransformTests.test_training_augmentation_reproducible) ... ok
+seed 11 candidate 0 epoch 1: val macro-F1=0.1000
+seed 11 candidate 1 epoch 1: val macro-F1=0.1000
+Selected seed 11: candidate 0, epoch 1. Test untouched.
+test_full_selection_never_predicts_test_partition (resnet18.tests.test_finetune.FineTuneTests.test_full_selection_never_predicts_test_partition) ... ok
+test_only_layer4_and_head_change_and_batchnorm_stays_fixed (resnet18.tests.test_finetune.FineTuneTests.test_only_layer4_and_head_change_and_batchnorm_stays_fixed) ... ok
+test_person5_format_and_mismatched_seed_rejected (resnet18.tests.test_finetune.FineTuneTests.test_person5_format_and_mismatched_seed_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 13.171s
+
+OK

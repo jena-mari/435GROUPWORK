@@ -12,11 +12,11 @@ This folder contains the shared CNN code and the two experiment drivers.
 | `SHARED_COMPONENTS_INTEGRATION.md` | API mapping and preprocessing decisions |
 | `ROLE5_FROZEN_EXPERIMENTS.md` | Frozen-model commands and output files |
 
-Both CNNs use 224×224 aspect-preserving padding, ImageNet normalisation,
-training-only horizontal flips and rotations up to ±10°. BatchNorm running
+The final Role 6 runs use the shared portrait-preserving 448×224 layout,
+ImageNet normalisation and training-only augmentation. BatchNorm running
 statistics are held fixed. The frozen model trains only its 2,565-parameter
 head. Fine-tuning starts from the matching frozen checkpoint and trains
-`layer4` plus the head.
+`layer4` plus the head, with candidate and epoch selection on validation data.
 
 The completed compact outputs are in `../results/frozen_resnet18/` and
 `../results/finetuned_resnet18/`. Checkpoints remain local because each is large.

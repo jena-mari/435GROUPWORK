@@ -1,0 +1,15 @@
+{
+  "python": "3.12.14",
+  "torch": "2.11.0+cu128",
+  "numpy": "2.3.5",
+  "pillow": "12.3.0",
+  "sklearn": "1.7.2",
+  "device": "cuda",
+  "cuda": "12.8",
+  "cudnn_deterministic": true,
+  "cudnn_benchmark": false,
+  "gpu": "NVIDIA GeForce RTX 5050 Laptop GPU",
+  "logical_processors": 16,
+  "cpu_threads": 4,
+  "executable": "D:\\PROJECTS\\JASWANTH\\COMPUTER VISION\\PROJECT\\435GROUPWORK-main\\435GROUPWORK-main\\.venv-gpu\\Scripts\\python.exe"
+}
