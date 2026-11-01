@@ -62,7 +62,8 @@ def run_seed(seed, args, device):
     test_loader = cc.make_loader(datasets["test"], train=False, seed=seed,
                                  batch_size=args.batch_size, workers=args.workers)
 
-    run_dir = cc.new_run_dir(dataset_root, METHOD, seed, overwrite=args.overwrite)
+    run_dir = cc.new_run_dir(dataset_root, METHOD, seed, overwrite=args.overwrite,
+                             output_root=getattr(args, "output", None))
     model = cc.build_resnet18(dataset_root, pretrained=True).to(device)
     parameter_groups = cc.set_trainable(model, {"fc": args.learning_rate})
     params = cc.count_parameters(model)

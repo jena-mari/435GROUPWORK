@@ -86,7 +86,7 @@ def select_seed(args, seed):
     _, meta = cc.load_checkpoint(source)
     if meta.get("seed") != seed or meta.get("method") != "frozen_resnet18":
         raise ValueError("Frozen checkpoint metadata must contain matching seed and method=frozen_resnet18")
-    out = cc.new_run_dir(args.root, METHOD, seed)
+    out = cc.new_run_dir(args.root, METHOD, seed, output_root=getattr(args, "output", None))
     candidates = []
     for index, (layer_lr, head_lr) in enumerate(CANDIDATES):
         cc.set_seed(seed)
@@ -145,7 +145,8 @@ def select_seed(args, seed):
 
 
 def evaluate_seed(args, seed):
-    out = args.root.resolve() / "experiments" / METHOD / f"seed_{seed}"
+    experiments = getattr(args, "output", None) or args.root / "experiments"
+    out = Path(experiments).resolve() / METHOD / f"seed_{seed}"
     config = read_json(out / "run_config.json")
     if (out / "test_predictions.csv").exists() or (out / "metrics.json").exists():
         raise ValueError(f"Test outputs already exist in {out}; preserve the completed experiment")

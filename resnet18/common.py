@@ -553,11 +553,12 @@ def summary_rows(results):
 # ============================================================================================
 # Run records
 # ============================================================================================
-def new_run_dir(root, method, seed, overwrite=False):
+def new_run_dir(root, method, seed, overwrite=False, output_root=None):
     """Dhan-Shomadhan/experiments/<method>/seed_<seed>/ (refuses to overwrite an existing run by default)."""
     if method not in METHODS and not method.startswith("resnet18_checks"):
         raise ValueError(f"method must be one of {METHODS}")
-    directory = Path(root).resolve() / "experiments" / method / f"seed_{seed}"
+    experiments = Path(output_root) if output_root is not None else Path(root) / "experiments"
+    directory = experiments.resolve() / method / f"seed_{seed}"
     if directory.exists() and not overwrite:
         raise ValueError(f"{directory} already exists; choose another output or pass overwrite=True")
     directory.mkdir(parents=True, exist_ok=True)
