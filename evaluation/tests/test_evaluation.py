@@ -43,6 +43,55 @@ def fixture(root):
 
 
 class EvaluationTests(unittest.TestCase):
+    def flat_sources(self, sources):
+        for path in sources['frozen_resnet18'].glob('seed_*/run_config.json'):
+            old = json.loads(path.read_text())
+            config = dict(old['context'], method=old['method'])
+            config.pop('run_scope')
+            config.pop('policy')
+            config.update(weights=dict(
+                source='https://download.pytorch.org/models/resnet18-f37072fd.pth',
+                sha256='f37072fd47e89c5e827621c5baffa7500819f7896bbacec160b1a16c560e07ec'),
+                common_code_sha256='recorded-code-hash', selection_rule='validation macro-F1',
+                best_epoch=3, epochs_completed=8,
+                transforms=dict(train=dict(size=448, seed=config['seed']),
+                                validation=dict(size=448), test=dict(size=448)))
+            write_json(path, config)
+
+    def test_flat_final_records_allow_different_seeds_and_rebuild_metrics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); audit, sources = fixture(root)
+            self.flat_sources(sources)
+            summary = evaluate_sources(sources, audit, root / 'out', plots=False)
+            self.assertEqual(len(summary), 6)
+            row = next(r for r in summary if r['method'] == 'frozen_resnet18' and r['scenario'] == 'all')
+            self.assertAlmostEqual(row['accuracy_mean'], .8)
+
+    def test_flat_records_still_reject_diagnostics_invalid_weights_and_policy_changes(self):
+        changes = ({'smoke': True}, {'check_only': True}, {'run_scope': 'implementation_check'},
+                   {'weights': {}}, {'transforms': {}}, {'best_epoch': 0},
+                   {'status': 'selected_validation_only', 'method': 'finetuned_resnet18'})
+        for change in changes:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); audit, sources = fixture(root)
+                self.flat_sources(sources)
+                path = sources['frozen_resnet18'] / 'seed_55/run_config.json'
+                config = json.loads(path.read_text())
+                config.update(change)
+                write_json(path, config)
+                with self.assertRaises(ValueError):
+                    evaluate_sources(sources, audit, root / 'out', plots=False)
+                self.assertFalse((root / 'out').exists())
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); audit, sources = fixture(root)
+            self.flat_sources(sources)
+            path = sources['frozen_resnet18'] / 'seed_55/run_config.json'
+            config = json.loads(path.read_text())
+            config['transforms']['train']['size'] = 224
+            write_json(path, config)
+            with self.assertRaisesRegex(ValueError, 'different preprocessing'):
+                evaluate_sources(sources, audit, root / 'out', plots=False)
+
     def test_five_seed_comparison_uses_sample_std_and_combined_predictions(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); audit, sources = fixture(root)

@@ -104,11 +104,44 @@ def check_run_config(path, seed, method, version, hashes):
     if context.get('class_mapping') != CLASSES or context.get('background_mapping') != BACKGROUNDS:
         raise ValueError(f'Run label mapping mismatch: {path}')
     if method != 'baseline':
-        if context.get('run_scope') != 'experiment' or config.get('smoke') or config.get('check_only'):
-            raise ValueError('Diagnostic CNN runs cannot enter the final comparison')
-        if config.get('weights_source') != 'IMAGENET1K_V1':
-            raise ValueError('CNN run does not record ImageNet initialisation')
+        for record in (config, context):
+            if (record.get('run_scope', 'experiment') != 'experiment'
+                    or record.get('smoke') or record.get('check_only')):
+                raise ValueError(f'Diagnostic CNN runs cannot enter the final comparison: {path}')
+        if 'context' in config:
+            if context.get('run_scope') != 'experiment':
+                raise ValueError(f'CNN run scope is missing: {path}')
+            if config.get('weights_source') != 'IMAGENET1K_V1':
+                raise ValueError('CNN run does not record ImageNet initialisation')
+        else:
+            # The final training scripts emit a flat record, with verified
+            # weight provenance and transforms rather than context.policy.
+            weights = config.get('weights', {})
+            if (weights.get('source') != 'https://download.pytorch.org/models/resnet18-f37072fd.pth'
+                    or weights.get('sha256') != 'f37072fd47e89c5e827621c5baffa7500819f7896bbacec160b1a16c560e07ec'):
+                raise ValueError('CNN run does not record verified ImageNet initialisation')
+            transforms = config.get('transforms', {})
+            if (not all(isinstance(transforms.get(p), dict) and transforms[p]
+                        for p in ('train', 'validation', 'test'))
+                    or transforms['validation'] != transforms['test']):
+                raise ValueError(f'CNN preprocessing metadata is missing or inconsistent: {path}')
+            if not config.get('common_code_sha256') or not config.get('selection_rule'):
+                raise ValueError(f'CNN training provenance is missing: {path}')
+            if method == 'frozen_resnet18':
+                if not 0 < config.get('best_epoch', 0) <= config.get('epochs_completed', 0):
+                    raise ValueError(f'Frozen run has no completed checkpoint selection: {path}')
+            elif (config.get('status') != 'test_evaluated' or not config.get('selected')
+                    or not config.get('selected_checkpoint_sha256')):
+                raise ValueError(f'Fine-tuned run has no completed test evaluation: {path}')
     return config
+
+
+def cnn_policy(config):
+    if 'context' in config:
+        return config['context']['policy']
+    # Seeds vary by run; all preprocessing and augmentation settings must agree.
+    return {part: {key: value for key, value in transform.items() if key != 'seed'}
+            for part, transform in config['transforms'].items()}
 
 
 def metrics(rows):
@@ -195,7 +228,7 @@ def evaluate_sources(sources, audit, output, *, thumbnail_reference=None, plots=
                 config_path = directory / 'run_config.json'
                 config = check_run_config(config_path, seed, method, version, hashes[seed])
                 if method != 'baseline':
-                    policies.append(config['context']['policy'])
+                    policies.append(cnn_policy(config))
                 collected[(method, seed)] = normalise_predictions(
                     read_csv(prediction_path), manifests[seed], seed, method)
                 records.append(dict(method=method, seed=seed, source=display_path(directory),
