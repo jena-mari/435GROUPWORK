@@ -560,7 +560,7 @@ class RiceDataset:
 
     def __getitem__(self, index):
         row = self.rows[index]
-        image = rgb_image(self.root / row["path"])
+        image = rgb_image((self.root / row["path"]).resolve())
         if self.transform is not None:
             image = self.transform(image)
         return dict(image=image, disease_id=int(row["disease_id"]),

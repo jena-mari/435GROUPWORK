@@ -1,0 +1,196 @@
+{
+  "background_mapping": {
+    "field": 0,
+    "white": 1
+  },
+  "batch_size": 32,
+  "batchnorm": "running statistics fixed at ImageNet values (kept in eval mode during training)",
+  "candidates": [
+    {
+      "best_epoch": 9,
+      "candidate": 0,
+      "epochs_run": 14,
+      "head_lr": 0.0001,
+      "layer4_lr": 1e-05,
+      "validation_loss": 0.9871154498399758,
+      "validation_macro_f1": 0.600647395917426
+    },
+    {
+      "best_epoch": 17,
+      "candidate": 1,
+      "epochs_run": 20,
+      "head_lr": 0.0003,
+      "layer4_lr": 3e-05,
+      "validation_loss": 0.9916241226899551,
+      "validation_macro_f1": 0.645333935543222
+    }
+  ],
+  "class_mapping": {
+    "brown_spot": 0,
+    "leaf_scald": 1,
+    "rice_blast": 2,
+    "rice_tungro": 3,
+    "sheath_blight": 4
+  },
+  "common_code_sha256": "8dbd4b3cec6066239c447289be9861bc74241e6c8a7894038065bc1811bdfbd2",
+  "environment": {
+    "cuda": "12.8",
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "device": "cuda",
+    "numpy": "2.3.5",
+    "pillow": "12.3.0",
+    "python": "3.12.14",
+    "sklearn": "1.7.2",
+    "torch": "2.11.0+cu128"
+  },
+  "evaluation_environment": {
+    "cuda": "12.8",
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "device": "cuda",
+    "numpy": "2.3.5",
+    "pillow": "12.3.0",
+    "python": "3.12.14",
+    "sklearn": "1.7.2",
+    "torch": "2.11.0+cu128"
+  },
+  "frozen_checkpoint": "D:\\PROJECTS\\JASWANTH\\COMPUTER VISION\\PROJECT\\435GROUPWORK-main\\435GROUPWORK-main\\Dhan-Shomadhan\\experiments\\frozen_resnet18\\seed_11\\best_checkpoint.pt",
+  "frozen_config_sha256": "18014984d383e8c19311aa00371d584b5f257ce235fa1510dc905dee934ac2e8",
+  "frozen_sha256": "b5b43f620d64e352e038884a896087d86f48bd96c2b84c558dda629713e0c3fd",
+  "manifest_sha256": {
+    "test": "a296c3237766d5cb5fd023087c30594efd967bddca3967609dc8d80aff144f8e",
+    "train": "41b1d6ea540e98e59e52b3fec72917f8d986cab4e2ab6a49a3bb92e6e968877e",
+    "validation": "5bb1f81c873532e4c49d8adcf992d8c45a2516c2bcfc5019e0662c1d68f9b273"
+  },
+  "manifest_version": "conservative_splits/bad260e9eda16df2",
+  "max_epochs": 20,
+  "method": "finetuned_resnet18",
+  "model_seed": 11,
+  "optimizer": "Adam",
+  "parameter_counts": {
+    "total": 11179077,
+    "trainable": 8396293
+  },
+  "patience": 5,
+  "seed": 11,
+  "selected": {
+    "best_epoch": 17,
+    "candidate": 1,
+    "epochs_run": 20,
+    "head_lr": 0.0003,
+    "layer4_lr": 3e-05,
+    "validation_loss": 0.9916241226899551,
+    "validation_macro_f1": 0.645333935543222
+  },
+  "selected_checkpoint": "candidate_1\\best.pt",
+  "selected_checkpoint_sha256": "9f2ce0fe6ea4547147b2b4c0afc8df4c377815638f81dba13d73a40dd7dbfea5",
+  "selection_rule": "highest validation macro-F1; exact ties keep the lower validation loss; stop after 5 consecutive epochs without improvement; test images not used",
+  "status": "test_evaluated",
+  "trainable": {
+    "fc": 0.0003,
+    "layer4": 3e-05
+  },
+  "training_code_sha256": "67da1560889cb0d89fe87d22b5018896dd5ceac8652470c9a3a665c0371aff8d",
+  "transforms": {
+    "test": {
+      "crop": "none (whole image)",
+      "input_hw": [
+        448,
+        224
+      ],
+      "normalisation": {
+        "mean": [
+          0.48500001430511475,
+          0.4560000002384186,
+          0.4059999883174896
+        ],
+        "std": [
+          0.2290000021457672,
+          0.2240000069141388,
+          0.22499999403953552
+        ]
+      },
+      "resample": "bilinear",
+      "resize_mode": "portrait",
+      "type": "eval"
+    },
+    "train": {
+      "augmentation": {
+        "brightness": 0.2,
+        "contrast": 0.2,
+        "crop_area": [
+          0.6,
+          1.0
+        ],
+        "crop_aspect_jitter": [
+          0.75,
+          1.3333333333333333
+        ],
+        "hflip": 0.5,
+        "hue_saturation": "unchanged",
+        "rotation_degrees": 15.0,
+        "vflip": 0.5
+      },
+      "crop": "none (whole image)",
+      "input_hw": [
+        448,
+        224
+      ],
+      "normalisation": {
+        "mean": [
+          0.48500001430511475,
+          0.4560000002384186,
+          0.4059999883174896
+        ],
+        "std": [
+          0.2290000021457672,
+          0.2240000069141388,
+          0.22499999403953552
+        ]
+      },
+      "order": [
+        "orient",
+        "random crop",
+        "resize",
+        "flips",
+        "rotation (ImageNet-mean fill)",
+        "brightness",
+        "contrast",
+        "normalise"
+      ],
+      "resample": "bilinear",
+      "resize_mode": "portrait",
+      "seed": 11,
+      "type": "train"
+    },
+    "validation": {
+      "crop": "none (whole image)",
+      "input_hw": [
+        448,
+        224
+      ],
+      "normalisation": {
+        "mean": [
+          0.48500001430511475,
+          0.4560000002384186,
+          0.4059999883174896
+        ],
+        "std": [
+          0.2290000021457672,
+          0.2240000069141388,
+          0.22499999403953552
+        ]
+      },
+      "resample": "bilinear",
+      "resize_mode": "portrait",
+      "type": "eval"
+    }
+  },
+  "weights": {
+    "file": "Dhan-Shomadhan/pretrained/resnet18-f37072fd.pth",
+    "sha256": "f37072fd47e89c5e827621c5baffa7500819f7896bbacec160b1a16c560e07ec",
+    "source": "https://download.pytorch.org/models/resnet18-f37072fd.pth"
+  },
+  "workers": 6
+}

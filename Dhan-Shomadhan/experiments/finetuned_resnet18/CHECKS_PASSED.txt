@@ -1,0 +1,3 @@
+All five experiments complete. Exported test predictions reproduce saved metrics.
+All IDs, labels, backgrounds, probabilities, code/manifest/checkpoint hashes verified.
+Dataset verification and automated test logs are in logs/.

@@ -1,24 +1,36 @@
-# Shared data preparation
+# Shared data preprocessing
 
-The preprocessing code audits the downloaded images, checks labels and hashes,
-records possible duplicates, and builds the five shared group-preserving
-train/validation/test splits.
+This folder contains the preparation used by every method. It handles image
+checks, folder-label mapping, similarity groups, shared splits and image loading.
+Model-specific feature extraction and training belong in the method folders.
 
-Run the standard checks from the repository root:
+| File | Purpose |
+|---|---|
+| `prepare_dataset.py` | Audit source images, generate shared holdouts, provide `RiceDataset` |
+| `verify_dataset.py` | Check downloaded images and saved manifest checksums |
+| `make_figures.py` | Rebuild sample figures, candidate-pair sheets and class contact sheets from the saved audit |
+| `make_report.py` | Build the HTML inspection report and report-section text |
+| `test_prepare_dataset.py` | Checks for grouping, coverage, source selection and loading |
+| `requirements.txt` | Dependencies for the recorded preprocessing environment |
+| `README.txt` | Detailed audit rules and reproduction instructions |
+
+Run commands from the repository root:
 
 ```bash
-python data_preprocessing/verify_dataset.py \
-  --root /path/to/Dhan-Shomadhan \
-  --audit Dhan-Shomadhan/preprocessing
-python -m unittest discover -s data_preprocessing -p 'test_*.py' -v
+python data_preprocessing/verify_dataset.py
+python -m unittest discover -s data_preprocessing -p 'test_prepare_dataset.py' -v
+python data_preprocessing/make_figures.py
 ```
 
-The current version is the path in
-`Dhan-Shomadhan/preprocessing/CURRENT_SPLIT_VERSION.txt`. Do not generate a new
-split for an individual method. Background and image IDs are metadata used for
-analysis and prediction checks; they are not classifier inputs.
+The image-verification command needs the original dataset. Figure rebuilding
+uses the committed inventory and thumbnails; it does not train a model or change
+the shared partitions. Existing generated figure files are replaced when rebuilt.
 
-The audit found no unreadable files or byte-identical duplicates. Pending
-perceptual-hash candidates were grouped conservatively to reduce leakage risk.
-This can over-group unrelated leaves, so the limitation should be stated in the
-report.
+Outputs are under [`Dhan-Shomadhan/preprocessing/`](../Dhan-Shomadhan/README.md):
+audit CSV/JSON files, the current-version pointer, five split sets, thumbnails,
+HTML review pages and the [`figures/`](../Dhan-Shomadhan/preprocessing/figures/README.md) folder.
+Use the current saved splits for the comparison. A new audit must use a separate
+output directory until the group agrees to adopt it.
+
+The [project README](../README.md) covers dataset setup. The
+[group handover](../GROUP_HANDOVER.md) covers training and results.

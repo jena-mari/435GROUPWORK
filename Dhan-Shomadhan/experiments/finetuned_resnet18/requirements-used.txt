@@ -1,0 +1,17 @@
+# Direct and core runtime package versions used for the completed runs.
+# The CUDA PyTorch wheel is available from https://download.pytorch.org/whl/cu128
+torch==2.11.0+cu128
+numpy==2.3.5
+Pillow==12.3.0
+scikit-learn==1.7.2
+matplotlib==3.11.2
+scipy==1.18.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+filelock==4.2.4
+sympy==1.14.0
+networkx==3.7
+jinja2==3.1.6
+fsspec==2026.9.0
+typing_extensions==4.16.0
+reportlab==4.4.9

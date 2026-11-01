@@ -1,70 +1,9 @@
-# Group handover
+# Group handover - Person 6
 
-The repository now contains the shared data preparation, the full SVM run,
-five frozen ResNet-18 runs, the final Role 6 fine-tuned ResNet-18 runs and their
-comparison. The Role 6 package includes source, validation-selection records,
-test predictions, checks and report artifacts.
-Use the saved predictions in `results/` when writing the report.
+Read `resnet18/ROLE6_FINE_TUNED_EXPERIMENTS.md` for setup, file locations, class IDs and reproduction instructions.
 
-The full local outputs used for the report are named
-`experiments/baseline/`, `experiments/frozen_resnet18_8ep/`,
-`experiments/finetuned_resnet18_4ep/` and
-`experiments/comparison_8ep_4ep/` under the downloaded dataset. The compact
-GitHub copies use `results/baseline/`, `results/frozen_resnet18/`,
-`results/finetuned_resnet18/` and `results/comparison/`.
+Person 4: use `Dhan-Shomadhan/experiments/finetuned_resnet18/seed_*/test_predictions.csv` and match on image_id and seed. Metrics, histories and figures are under the same method folder.
 
-## Who uses what
+Person 5: your supplied archive had code but no trained checkpoints. The frozen prerequisites were generated locally using your unchanged script; their CSV/JSON results are under `Dhan-Shomadhan/experiments/frozen_resnet18/`. Coordinate them with your final runs.
 
-| Work | Location | Handover |
-|---|---|---|
-| Dataset audit and splits | `data_preprocessing/`, `Dhan-Shomadhan/preprocessing/` | Keep the current split version unchanged |
-| HSV–LBP–SVM | `hsv_lbp_svm/`, `results/baseline/` | Full validation grid; scaler fitted on training data only |
-| Frozen ResNet-18 | `resnet18/train_frozen.py`, `results/frozen_resnet18/` | ImageNet backbone, head only; official local output is `frozen_resnet18_8ep` |
-| Fine-tuned ResNet-18 | `resnet18/train_finetuned.py`, `resnet18/ROLE6_FINE_TUNED_EXPERIMENTS.md`, `results/finetuned_resnet18/` | Same-seed frozen checkpoint, validation-selected `layer4` + head; final Role 6 outputs |
-| Evaluation | `evaluation/`, `results/comparison/` | Checks IDs and manifests, then produces tables and matrices |
-
-## Result files
-
-Each method has five directories, one per seed. Keep these small files when
-sharing results:
-
-- `run_config.json`
-- `validation_history.csv`
-- `test_predictions.csv`
-- `metrics.json`
-- `test_evaluation.json`
-
-The comparison folder contains `five_run_summary.csv`, `per_run_metrics.csv`,
-`per_class_metrics.csv`, `prediction_review.csv`, `paired_differences.csv` and
-the confusion matrices. Do not commit `best.pt`, `selected_model.pkl`, SVM
-feature caches or raw images.
-
-## Report values
-
-Use the mean and sample standard deviation columns from
-`results/finetuned_resnet18/summary.csv` for the final Role 6 method and from
-`results/comparison/five_run_summary.csv` for the full comparison. Report white, field and combined
-test subsets separately. Combined scores are calculated from all predictions,
-not by averaging the two background scores.
-
-For the discussion, use `per_class_metrics.csv` to identify class-level patterns
-and `prediction_review.csv` to choose representative images. Check the original
-images before explaining why a prediction failed. Treat background effects as
-observations from this dataset, not as causal proof.
-
-## Re-run checks
-
-```bash
-python data_preprocessing/verify_dataset.py \
-  --root /path/to/Dhan-Shomadhan \
-  --audit Dhan-Shomadhan/preprocessing
-python -m resnet18.check_cnn check --dataset /path/to/Dhan-Shomadhan
-python -m evaluation.role4_evaluation \
-  --svm results/baseline --frozen results/frozen_resnet18 \
-  --finetuned results/finetuned_resnet18 --out /tmp/comparison-check
-```
-
-The compact results in GitHub were generated from the full local dataset. The
-source images and checkpoints must be downloaded or regenerated locally when a
-new experiment is needed. See [REPRODUCTION.md](REPRODUCTION.md) for the exact
-commands and the distinction between the compact copies and full local runs.
+The main ZIP contains code and result records. Selected fine-tuned model weights are in the separate matching-layout checkpoints ZIP. Original images are supplied separately.

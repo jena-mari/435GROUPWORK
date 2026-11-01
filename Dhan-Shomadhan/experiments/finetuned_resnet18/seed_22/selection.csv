@@ -1,0 +1,3 @@
+candidate,layer4_lr,head_lr,best_epoch,validation_macro_f1,validation_loss,epochs_run
+0,1e-05,0.0001,12,0.6811797698575124,0.8320298422466624,17
+1,3e-05,0.0003,11,0.694477303152002,0.7987655943993366,16
