@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # Original repository: https://github.com/jena-mari/435GROUPWORK
-"""Standalone CSCI435 rice disease experiments (Python 3.12).
+"""Rice leaf disease experiments. Requires Python 3.12.
 
-Run next to Dhan-Shomadhan/, or supply --dataset explicitly. All extracted
-code, environments, caches, predictions and figures remain inside that folder.
-Examples: python group_name.py setup; python group_name.py evaluate-reported
-          python group_name.py train; python group_name.py evaluate
+Run from the folder containing Dhan-Shomadhan/.
 """
 from __future__ import annotations
 
@@ -66,8 +63,7 @@ def _write_bundle(files, destination, *, immutable):
 
 def _materialise(dataset, audit):
     bundle = _bundle()
-    # Content-addressed runtime: loading a newer entry point never alters code
-    # belonging to an earlier checkpoint's recorded source hashes.
+    # Keep runtime versions separate for checkpoint compatibility.
     runtime = _inside(dataset / '.submission_runtime' / _PAYLOAD_SHA256[:16], dataset)
     _write_bundle(bundle['modules'], runtime, immutable=True)
     _write_bundle(bundle['audit'], audit, immutable=True)
@@ -93,7 +89,7 @@ def _python(kind, args):
         candidates.append(_env_path(parent / ('.venv-' + kind)))
     for candidate in candidates:
         if candidate.is_file():
-            return str(candidate.absolute())  # Do not resolve away the venv symlink.
+            return str(candidate.absolute())  # Keep the virtual environment's Python path.
     raise ValueError(f'No {kind} environment found. Run: python {Path(__file__).name} install '
                      f'--dataset "{args.dataset}"; or supply --{kind}-python /path/to/python')
 
@@ -108,8 +104,7 @@ def _call(kind, module, argv, args, runtime):
     env.update(TMPDIR=str(tmp), TMP=str(tmp), TEMP=str(tmp),
                MPLCONFIGDIR=str(cache / 'matplotlib'), XDG_CACHE_HOME=str(cache),
                PYTHONPYCACHEPREFIX=str(cache / 'pycache'))
-    # The python.org macOS installer may have no configured CA bundle. Use the
-    # system's trusted bundle when present, while retaining certificate checks.
+    # Use the system CA bundle on macOS.
     if sys.platform == 'darwin' and Path('/etc/ssl/cert.pem').is_file():
         env.setdefault('SSL_CERT_FILE', '/etc/ssl/cert.pem')
     command = [python, str(Path(__file__).resolve()), '_run', str(args.dataset),
@@ -234,7 +229,7 @@ def main(argv=None):
         _call('cnn', 'resnet18.check_cnn', options, args, runtime)
         return
     if args.command == 'audit':
-        # Re-auditing is optional and separate; never regenerate the report splits.
+        # Save the new audit separately from the shared splits.
         output = args.output or _fresh(args.dataset, 'audit-') / 'preprocessing'
         _call('cnn', 'data_preprocessing.prepare_dataset', ['audit', '--root', args.dataset,
               '--output', output, '--workers', max(1, args.workers)], args, runtime)
@@ -250,7 +245,6 @@ def main(argv=None):
         return
     if args.command.startswith('train'):
         _verify(args, runtime)
-        # Validate both interpreter paths before starting a combined experiment.
         if args.command in ('train', 'train-svm'):
             _python('svm', args)
         if args.command != 'train-svm':
